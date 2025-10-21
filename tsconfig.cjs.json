@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist/cjs",
+    "module": "commonjs",
+    "declaration": true,
+    "declarationDir": "dist/cjs/types",
+    "verbatimModuleSyntax": false,
+    "noEmit": false
+  },
+  "include": ["src"]
+}
