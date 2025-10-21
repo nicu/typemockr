@@ -1,0 +1,50 @@
+{
+  "name": "typemockr",
+  "version": "0.1.0",
+  "keywords": [
+    "typescript",
+    "mocks",
+    "mock",
+    "mock-generator",
+    "faker",
+    "test-data",
+    "fixtures",
+    "codegen"
+  ],
+  "author": "Nicu Ciocan <nicolae.ciocan@lateralgroup.com>",
+  "license": "MIT",
+  "description": "Generate realistic mock data from TypeScript classes, interfaces and type aliases using Faker — ideal for tests and fixtures.",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:nicu/typemockr.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nicu/typemockr/issues"
+  },
+  "homepage": "https://github.com/nicu/typemockr#readme",
+  "devDependencies": {
+    "@types/node": "^20.7.3",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2"
+  },
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.mjs",
+  "types": "dist/cjs/types/index.d.ts",
+  "bin": {
+    "typemockr": "dist/bin/typemockr"
+  },
+  "files": [
+    "dist",
+    "types"
+  ],
+  "scripts": {
+    "build:esm": "tsc --project tsconfig.esm.json",
+    "build:cjs": "tsc --project tsconfig.cjs.json",
+    "build": "npm run build:esm && npm run build:cjs",
+    "postbuild": "node ./scripts/generate-bin.js",
+    "lint": "tsc"
+  },
+  "dependencies": {
+    "ts-morph": "^27.0.0"
+  }
+}
