@@ -17,7 +17,6 @@ import type {
 import { generate } from "./generation";
 import {
   getLocation,
-  getDocs,
   parseVariableStatement,
   getGenerics,
   isExported,
@@ -64,7 +63,7 @@ function getOutputPathsForSourceFile({
   sourceFile: SourceFile;
   outputRootDir: string;
   baseDir: string[];
-  format?: "ts" | "jsdoc";
+  format?: "ts" | "js";
 }) {
   // Mirror structure under ./lib/output relative to the input project root
   const relPath = path.relative(projectRootDir, sourceFile.getFilePath());
@@ -78,7 +77,7 @@ function getOutputPathsForSourceFile({
 
   const astPath = path.join(outDir, `Mock${baseName}.ast.json`);
 
-  const ext = format === "jsdoc" ? ".mock.js" : ".mock.ts";
+  const ext = format === "js" ? ".mock.js" : ".mock.ts";
   // Use baseName.mock.ts/js (no `Mock` prefix in filenames). The exported
   // symbols inside files still use the Mock<...> naming to preserve API.
   const mockPath = path.join(outDir, `${baseName}${ext}`);
@@ -100,7 +99,7 @@ export function generateMocks({
   baseDir?: string[];
   mappings?: Record<string, string[]>;
   mappingProvider?: string;
-  format?: "ts" | "jsdoc";
+  format?: "ts" | "js";
 }) {
   const project = new Project({
     tsConfigFilePath: path.join(projectRootDir, "tsconfig.json"),
@@ -108,82 +107,6 @@ export function generateMocks({
   });
   // Add initial include paths
   project.addSourceFilesAtPaths(include);
-
-  function resolveModuleToFilePath(fromDir: string, moduleSpecifier: string) {
-    // Only handle relative paths here
-    const spec = moduleSpecifier;
-    const base = path.resolve(fromDir, spec);
-    const exts = [".ts", ".tsx", ".d.ts", ".js", ".jsx"];
-
-    // If the spec already has an extension and points to a real file, accept it
-    try {
-      if (fs.existsSync(base) && fs.statSync(base).isFile()) return base;
-    } catch {}
-
-    // Try appending extensions
-    for (const e of exts) {
-      const p = base + e;
-      try {
-        if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
-      } catch {}
-    }
-
-    // Try index files inside the directory
-    try {
-      if (fs.existsSync(base) && fs.statSync(base).isDirectory()) {
-        for (const e of exts) {
-          const p = path.join(base, `index${e}`);
-          try {
-            if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
-          } catch {}
-        }
-      }
-    } catch {}
-
-    return undefined;
-  }
-
-  function expandProjectWithLocalImports(proj: Project) {
-    const seen = new Set<string>();
-    const queue: string[] = [];
-
-    for (const sf of proj.getSourceFiles()) {
-      const fp = sf.getFilePath();
-      seen.add(fp);
-      queue.push(fp);
-    }
-
-    while (queue.length) {
-      const filePath = queue.shift()!;
-      const sf = proj.getSourceFile(filePath);
-      if (!sf) continue;
-      const fromDir = path.dirname(filePath);
-
-      // Handle both import declarations and export-from declarations
-      const importDecls = sf.getImportDeclarations();
-      const exportDecls = sf.getExportDeclarations();
-
-      for (const decl of [...importDecls, ...exportDecls]) {
-        const moduleSpec = decl.getModuleSpecifierValue?.();
-        if (!moduleSpec) continue;
-        // Only follow relative imports (./ or ../)
-        if (!moduleSpec.startsWith(".") && !moduleSpec.startsWith("/"))
-          continue;
-        const resolved = resolveModuleToFilePath(fromDir, moduleSpec);
-        if (!resolved) continue;
-        // Normalize
-        const normalized = path.resolve(resolved);
-        if (seen.has(normalized)) continue;
-        try {
-          proj.addSourceFileAtPath(normalized);
-          seen.add(normalized);
-          queue.push(normalized);
-        } catch (err) {
-          // ignore resolution errors
-        }
-      }
-    }
-  }
 
   expandProjectWithLocalImports(project);
 
@@ -349,7 +272,51 @@ export function generateMocks({
       format
     );
     fs.writeFileSync(mockPath, mockCode, "utf-8");
-    // console.log(`Wrote: ${astPath} and ${mockPath}`);
+
+    if (format === "js") {
+      try {
+        const dtsPath = mockPath.replace(/\.mock\.js$/, ".mock.d.ts");
+        const dtsDir = path.dirname(dtsPath);
+        const importMap = new Map<string, string[]>(); // module -> [names]
+
+        for (const e of astNodes) {
+          const name = e.name;
+          // Prefer explicit location, fallback to global type map
+          const orig = (e as any).location?.file ?? typeToFileMap.get(name);
+          if (!orig) continue;
+          let rel = path.relative(dtsDir, orig).replace(/\\/g, "/");
+          rel = rel.replace(/\.(ts|tsx|js|jsx|d\.ts)$/, "");
+          if (!rel.startsWith(".") && !rel.startsWith("/")) rel = `./${rel}`;
+          const arr = importMap.get(rel) || [];
+          if (!arr.includes(name)) arr.push(name);
+          importMap.set(rel, arr);
+        }
+
+        const lines: string[] = [];
+
+        for (const [mod, names] of importMap.entries()) {
+          lines.push(`import type { ${names.join(", ")} } from '${mod}';`);
+        }
+        if (lines.length) lines.push("");
+
+        for (const e of astNodes) {
+          const name = e.name;
+          const funcName = `Mock${name}`;
+          // Determine return type: if we imported it, use the type name; otherwise fallback to unknown
+          const hasImport = Array.from(importMap.values()).some((arr) =>
+            arr.includes(name)
+          );
+          const retType = hasImport ? name : "unknown";
+          lines.push(
+            `export function ${funcName}(overrides?: Partial<${retType}>): ${retType};`
+          );
+        }
+
+        fs.writeFileSync(dtsPath, lines.join("\n"), "utf-8");
+      } catch (err) {
+        // best-effort; do not crash generation on .d.ts emission failure
+      }
+    }
   }
 }
 
