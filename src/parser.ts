@@ -32,20 +32,6 @@ export function getLocation(node: Node) {
   return { file: sourceFile.getFilePath(), line };
 }
 
-export function getDocs(node: Node): string | undefined {
-  // Only certain nodes have getJsDocs
-  if ("getJsDocs" in node && typeof (node as any).getJsDocs === "function") {
-    const docs = (node as any).getJsDocs();
-    if (docs.length > 0) {
-      return docs
-        .map((d: any) => d.getComment && d.getComment())
-        .filter(Boolean)
-        .join("\n");
-    }
-  }
-  return undefined;
-}
-
 export function isExported(node: Node): boolean {
   // @ts-ignore
   return node.isExported?.() || false;
@@ -102,7 +88,6 @@ export function parseVariableStatement(
       type: "constant",
       value,
       isExported: true,
-      docs: getDocs(decl),
       // No location for constants
     };
   });
@@ -338,7 +323,6 @@ export function symbolToASTProperty(
   const decl = declarations[0];
   const name = symbol.getName();
   const optional = symbol.isOptional?.() || false;
-  const docs = decl ? getDocs(decl) : undefined;
   // No location for properties
   const location = undefined;
 
@@ -373,7 +357,7 @@ export function symbolToASTProperty(
       value = astVal;
     }
   } catch {}
-  return { name, optional, docs, location, ...value };
+  return { name, optional, location, ...value };
 }
 
 export function parseClassOrInterface(
@@ -423,7 +407,7 @@ export function parseClassOrInterface(
     inherits,
     isExported: isExported(node),
     generics: getGenerics(node, typeToFileMap, currentSourceFile),
-    docs: getDocs(node),
+    // docs removed
     location: getLocation(node),
   };
 }
@@ -438,7 +422,6 @@ export function parseEnum(node: Node): ASTEntityEnum {
     type: "enum",
     values,
     isExported: isExported(node),
-    docs: getDocs(node),
     location: getLocation(node),
   };
 }
@@ -453,7 +436,6 @@ export function parseTypeAlias(
   // @ts-ignore
   const typeNode = node.getTypeNode();
   const type = node.getType();
-  const docs = getDocs(node);
   const location = getLocation(node);
   const isExportedVal = isExported(node);
   // Try to distinguish union, array, alias, etc.
@@ -465,7 +447,6 @@ export function parseTypeAlias(
         .getUnionTypes()
         .map((t) => typeToAST(t, typeToFileMap, currentSourceFile)),
       isExported: isExportedVal,
-      docs,
       location,
     };
     return entity;
@@ -485,7 +466,6 @@ export function parseTypeAlias(
         ],
       },
       isExported: isExportedVal,
-      docs,
       // No location for arrays
     };
     return entity;
@@ -503,7 +483,6 @@ export function parseTypeAlias(
       type: "primitive",
       value: typeToAST(type, typeToFileMap, currentSourceFile) as any,
       isExported: isExportedVal,
-      docs,
       // No location for primitives
     };
     return entity;
@@ -515,7 +494,6 @@ export function parseTypeAlias(
       name,
       type: "placeholder",
       isExported: isExportedVal,
-      docs,
       // No location for placeholders
     };
     return entity;
@@ -526,7 +504,6 @@ export function parseTypeAlias(
     type: "alias",
     entities: [type.getText()],
     isExported: isExportedVal,
-    docs,
     location,
   };
   return entity;

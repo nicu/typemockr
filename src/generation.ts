@@ -392,7 +392,7 @@ export function generate(
   typeToFileMap?: Map<string, string>,
   mappings?: Record<string, string[]>,
   mappingProvider?: string,
-  format: "ts" | "jsdoc" = "ts"
+  format: "ts" | "js" = "ts"
 ) {
   // Initialize the inferGenerator with provided mappings (or fallback legacy file)
   setMappings(mappings);
@@ -907,9 +907,9 @@ export function generate(
             }
             // For classes, by default we previously created a prototype-based instance
             // (Object.create(Class.prototype)) which requires importing the class at runtime.
-            // In JS/JSDoc mode we avoid runtime imports and instead return plain objects.
+            // In JS mode we avoid runtime imports and instead return plain objects.
             const isClass = (item as any).instanceKind === "class";
-            if (isClass && format !== "jsdoc") {
+            if (isClass && format !== "js") {
               // Keep prototype-based instance for TS/runtime mode
               output.push(`  const base = {`);
               if (inherits?.length) {
@@ -927,7 +927,7 @@ export function generate(
                 output.push(`  return instance`);
               }
             } else {
-              // Emit plain object for JS/JSDoc mode or non-class instances
+              // Emit plain object for JS mode or non-class instances
               output.push(`  const result = {`);
               if (inherits?.length) {
                 output.push(`    ${inherits.join(",\n    ")},`);
@@ -1033,7 +1033,7 @@ export function generate(
             // item.values is an array of enum member names
             const values = (item.values || [])
               .map((v) => {
-                if (format === "jsdoc") {
+                if (format === "js") {
                   // Emit the member name or string literal so no runtime import is required
                   return `"${v}"`;
                 }
@@ -1043,7 +1043,7 @@ export function generate(
             output.push(
               `${exportKeyword}function Mock${item.name}()${resultType} {`
             );
-            if (format === "jsdoc") {
+            if (format === "js") {
               output.push(`  return faker.helpers.arrayElement([${values}]);`);
             } else {
               output.push(`  return faker.helpers.arrayElement([${values}]);`);
@@ -1107,15 +1107,15 @@ export function generate(
       const groups = fileToGroups.get(srcFile)!;
       const kind = nameToEntityKind.get(typeName);
       if (kind === "enum") {
-        // Enums are runtime values in TS mode, but when generating JS/JSDoc we prefer
+        // Enums are runtime values in TS mode, but when generating JS we prefer
         // to avoid runtime imports of the original enum. Treat enums as type-only
-        // in jsdoc output to prevent Node from attempting to import the source enum.
+        // in JS output to prevent Node from attempting to import the source enum.
         if (format === "ts") groups.value.add(typeName);
         else groups.typeOnly.add(typeName);
       } else if (kind === "instance") {
         const ent = nameToEntity.get(typeName);
         // Classes previously required runtime imports to create prototype-based instances.
-        // In JS/JSDoc mode we avoid runtime class imports and emit plain objects instead,
+        // In JS mode we avoid runtime class imports and emit plain objects instead,
         // so treat classes as type-only unless we're emitting TS runtime.
         if (ent?.instanceKind === "class") {
           if (format === "ts") groups.value.add(typeName);
@@ -1135,17 +1135,10 @@ export function generate(
       relTypePath = relTypePath.replace(/\.(d\.)?(ts|js)$/, "");
       if (!relTypePath.startsWith(".")) relTypePath = "./" + relTypePath;
       if (groups.typeOnly.size) {
-        // In TS mode emit `import type`, in JSDoc mode emit typedefs for each type
+        // In TS mode emit `import type`
         if (format === "ts") {
           const names = Array.from(groups.typeOnly).sort().join(", ");
           importLines.push(`import type { ${names} } from '${relTypePath}';`);
-        } else {
-          // jsdoc mode: add one typedef per type so editors can resolve them
-          for (const name of Array.from(groups.typeOnly).sort()) {
-            importLines.push(
-              `/** @typedef {import('${relTypePath}').${name}} ${name} */`
-            );
-          }
         }
       }
       if (groups.value.size) {
@@ -1259,8 +1252,8 @@ export function generate(
             if (relPathComputed)
               relPathComputed = relPathComputed.replace(/\.ts$|\.js$/, "");
           }
-          // For JS/JSDoc output, ensure we import the generated .js mock file with extension
-          if (format === "jsdoc" && relPathComputed) {
+          // For JS output, ensure we import the generated .js mock file with extension
+          if (format === "js" && relPathComputed) {
             if (!relPathComputed.endsWith(".js"))
               relPathComputed = relPathComputed + ".js";
           }
@@ -1280,7 +1273,7 @@ export function generate(
             relPathComputed = "./" + relPathComputed;
           if (relPathComputed)
             relPathComputed = relPathComputed.replace(/\.ts$|\.js$/, "");
-          if (format === "jsdoc" && relPathComputed) {
+          if (format === "js" && relPathComputed) {
             if (!relPathComputed.endsWith(".js"))
               relPathComputed = relPathComputed + ".js";
           }
@@ -1350,7 +1343,7 @@ export function generate(
         // normalize and strip extensions for consistent handling
         let relNoExt = rel.replace(/\.ts$|\.js$/, "");
         if (!relNoExt.startsWith(".")) relNoExt = "./" + relNoExt;
-        const finalRel = format === "jsdoc" ? relNoExt + ".js" : relNoExt;
+        const finalRel = format === "js" ? relNoExt + ".js" : relNoExt;
         const imp = `import { Mock${ref} } from '${finalRel}'`;
         // Normalize to ./' prefix
         let normalized = imp.replace(/'\.\//, "'./");
@@ -1366,54 +1359,6 @@ export function generate(
   }
 
   let finalBody = body.join("\n");
-  // In jsdoc mode, insert JSDoc blocks above generated functions that reference the original types
-  if (format === "jsdoc") {
-    // Build a map of entityName -> sourceFile path
-    const entitySource = new Map<string, string | undefined>();
-    for (const ent of data) {
-      const src =
-        (ent as any)?.location?.file ||
-        (typeToFileMap && typeToFileMap.get(ent.name));
-      entitySource.set(ent.name, src);
-    }
-
-    finalBody = finalBody.replace(
-      /(^|\n)(export )?function (Mock([A-Za-z0-9_]+))\(/g,
-      (m, p1, p2, fnFull, mockName) => {
-        const exportPart = p2 ? p2 : "";
-        const typeName = mockName; // e.g., MockPerson -> Person captured as group 4
-        // Lookup entity source
-        const srcFile = entitySource.get(typeName);
-        let paramType = "any";
-        let returnType = "any";
-        if (srcFile && currentMockFilePath) {
-          try {
-            let relTypePath = path
-              .relative(path.dirname(currentMockFilePath), srcFile)
-              .replace(/\\/g, "/");
-            relTypePath = relTypePath.replace(/\.(d\.)?(ts|js)$/, "");
-            if (!relTypePath.startsWith(".")) relTypePath = "./" + relTypePath;
-            // Use import('...').Type reference
-            paramType = `Partial<import('${relTypePath}').${typeName}>`;
-            returnType = `import('${relTypePath}').${typeName}`;
-          } catch (e) {
-            // fallback to any
-          }
-        }
-        // Determine if this entity supports recursion/options
-        const entObj = data.find((d) => d.name === typeName) as any;
-        const hasOptions = !!(
-          entObj &&
-          ((entObj as any).hasRecursion || (entObj as any).entityHasRecursion)
-        );
-
-        const optionsLine = hasOptions
-          ? ` * @param {{depth?: number, maxDepth?: number}} [__options]\n`
-          : "";
-        return `${p1}/**\n * @param {${paramType}} [overrides]\n${optionsLine} * @returns {${returnType}}\n */\n${exportPart}function ${fnFull}(`;
-      }
-    );
-  }
 
   // Use helper to strip unused options across entire final body
   finalBody = stripUnusedOptionsFromText(finalBody);

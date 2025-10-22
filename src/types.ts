@@ -3,8 +3,8 @@ export type Config = {
   include: string[];
   baseDir: string[];
   outDir?: string;
-  // Output format: 'ts' emits TypeScript mocks (.mock.ts). 'jsdoc' emits JS files with JSDoc typedefs (.mock.js)
-  format?: "ts" | "jsdoc";
+  // Output format: 'ts' emits TypeScript mocks (.mock.ts). 'js' emits plain JS files (.mock.js)
+  format?: "ts" | "js";
   mappings?: Record<string, string[]>;
   // Optional path (relative to project root) to a module that exports a mapping provider function
   // Signature: (type: string, path: string, _context?: any) => string | undefined
@@ -15,7 +15,7 @@ export type RawConfig = {
   include?: string[];
   baseDir?: string[];
   outDir?: string;
-  format?: "ts" | "jsdoc";
+  format?: "ts" | "js";
   mappings?: Record<string, string[]>;
   mappingProvider?: string;
 };
