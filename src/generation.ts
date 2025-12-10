@@ -67,6 +67,37 @@ function generateArrayValue(
   includeTypes: boolean,
   context?: GenerationContext
 ) {
+  // Allow mapping provider to override arrays. If the provider returns a value,
+  // use it directly (optionally casting to a typed array when `includeTypes`).
+  try {
+    const mapped = getFakerGenerator("array", path, context);
+    if (mapped !== undefined && mapped !== null) {
+      if (includeTypes) {
+        const [elem] = prop.value;
+        let elemType = "unknown";
+        if (elem) {
+          if (elem.type === "reference") {
+            const refVal = (elem as any).value as string;
+            const match = refVal.match(/\.([A-Za-z0-9_]+)$/);
+            elemType = match?.[1] ?? refVal;
+          } else if (elem.type === "primitive") {
+            const v = (elem as any).value;
+            if (v === "date") elemType = "Date";
+            else if (v === "object") elemType = "object";
+            else elemType = String(v);
+          } else if (elem.type === "array") {
+            elemType = "any";
+          } else {
+            elemType = "any";
+          }
+        }
+        return `(${mapped}) as ${elemType}[]`;
+      }
+      return mapped;
+    }
+  } catch (err) {
+    // ignore mapping provider errors and fall back to default generation
+  }
   const [type] = prop.value;
   if (!type) return "[]";
   // Always use faker.helpers.multiple(() => MockX()) for arrays of references
