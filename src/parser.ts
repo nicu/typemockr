@@ -356,7 +356,12 @@ export function symbolToASTProperty(
       }
       value = astVal;
     }
-  } catch {}
+  } catch (err) {
+    console.warn(
+      `Failed to parse type for property "${name}":`,
+      err instanceof Error ? err.message : err
+    );
+  }
   return { name, optional, location, ...value };
 }
 

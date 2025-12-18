@@ -35,7 +35,7 @@ function generatePrimitive(
   // because it can produce incorrectly-placed assertions (inside helpers). When
   // a typed assertion is required for composed base defaults we apply it at the
   // call site where the entire expression can be wrapped.
-  return gen;
+  return gen || "faker.lorem.words()";
 }
 
 function generateConstantValue(
@@ -68,45 +68,67 @@ function generateArrayValue(
   context?: GenerationContext
 ) {
   const [type] = prop.value;
-  
-  // If the array element is a reference type (class/interface), skip mapping overrides
-  // and use the default MockX() generation to produce proper shaped objects
-  const isReferenceElement = type && type.type === "reference";
-  
-  // Allow mapping provider to override arrays only for non-reference element types.
-  // If the provider returns a value, use it directly (optionally casting to a typed array when `includeTypes`).
-  if (!isReferenceElement) {
-    try {
-      const mapped = getFakerGenerator("array", path, context);
-      if (mapped !== undefined && mapped !== null) {
+
+  // Handle missing or empty element type
+  if (!type) {
+    console.warn(
+      `Array at path "${path}" has no element type, using empty array`
+    );
+    if (includeTypes) {
+      const [entity, ...propPath] = path.split(".");
+      if (entity && propPath.length) {
+        const accessKeys = propPath.map((key) => `["${key}"]`).join("");
+        return `[] as ${entity}${accessKeys}`;
+      }
+    }
+    return "[]";
+  }
+
+  // Check mapping provider first to allow explicit user overrides (e.g., "*.errors" -> [])
+  // But only use it if it looks like an array-specific override (contains array-like patterns)
+  // to avoid using generic fallbacks like faker.lorem.words() for complex types
+  try {
+    const mapped = getFakerGenerator("array", path, context);
+    if (mapped !== undefined && mapped !== null) {
+      // Check if the mapped value looks like an explicit array override
+      // (contains array-specific patterns or is an empty bracket/literal)
+      const isArraySpecificOverride =
+        /\[\s*\]|\.multiple\(|\.arrayElement\(|^faker\.helpers\./.test(
+          mapped
+        ) || mapped === "[]";
+
+      if (isArraySpecificOverride) {
+        // User provided an explicit override for this array path
         if (includeTypes) {
-          const [elem] = prop.value;
           let elemType = "unknown";
-          if (elem) {
-            if (elem.type === "reference") {
-              const refVal = (elem as any).value as string;
-              const match = refVal.match(/\.([A-Za-z0-9_]+)$/);
-              elemType = match?.[1] ?? refVal;
-            } else if (elem.type === "primitive") {
-              const v = (elem as any).value;
-              if (v === "date") elemType = "Date";
-              else if (v === "object") elemType = "object";
-              else elemType = String(v);
-            } else if (elem.type === "array") {
-              elemType = "any";
-            } else {
-              elemType = "any";
-            }
+          if (type.type === "reference") {
+            const refVal = (type as any).value as string;
+            const match = refVal.match(/\.([A-Za-z0-9_]+)$/);
+            elemType = match?.[1] ?? refVal;
+          } else if (type.type === "primitive") {
+            const v = (type as any).value;
+            if (v === "date") elemType = "Date";
+            else if (v === "object") elemType = "object";
+            else if (v === "unknown") elemType = "unknown";
+            else elemType = String(v);
+          } else if (type.type === "union") {
+            elemType = "any";
+          } else if (type.type === "array") {
+            elemType = "any";
+          } else {
+            elemType = "any";
           }
           return `(${mapped}) as ${elemType}[]`;
         }
         return mapped;
       }
-    } catch (err) {
-      // ignore mapping provider errors and fall back to default generation
+      // If mapped value doesn't look array-specific, fall through to type-based generation
     }
+  } catch (err) {
+    // ignore mapping provider errors and fall back to default generation
+    console.warn(`Mapping provider error for array at "${path}":`, err);
   }
-  if (!type) return "[]";
+
   // Always use faker.helpers.multiple(() => MockX()) for arrays of references
   if (type.type === "reference") {
     // If the reference is an import() expression, extract the type name
@@ -153,6 +175,34 @@ function generateArrayValue(
 
     return `faker.helpers.multiple(() => Mock${typeName}())`;
   }
+
+  // Handle arrays of union types (e.g., Array<TypeA | TypeB>)
+  // Generate multiple items where each item is randomly chosen from the union
+  if (type.type === "union") {
+    const unionValue = generateUnionValue(
+      type as any,
+      path,
+      includeTypes,
+      context
+    );
+    return `faker.helpers.multiple(() => ${unionValue})`;
+  }
+
+  // For primitive types with value "unknown", return an empty array with warning
+  if (type.type === "primitive" && type.value === "unknown") {
+    console.warn(
+      `Array at path "${path}" has unknown element type, using empty array`
+    );
+    if (includeTypes) {
+      const [entity, ...propPath] = path.split(".");
+      if (entity && propPath.length) {
+        const accessKeys = propPath.map((key) => `["${key}"]`).join("");
+        return `[] as ${entity}${accessKeys}`;
+      }
+    }
+    return "[]";
+  }
+
   const value = generateValue(type, path, includeTypes, context);
   const wrapped = value.trim().startsWith("{") ? `(${value})` : value;
   return `faker.helpers.multiple(() => ${wrapped})`;
