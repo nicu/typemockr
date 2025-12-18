@@ -118,6 +118,8 @@ export function getFakerGenerator(
       return "faker.date.recent()";
     case "object":
       return "{}";
+    case "array":
+      return null; // Return null for arrays to indicate no mapping, allowing user [] mappings to work
     default:
       return "faker.lorem.words()";
   }
