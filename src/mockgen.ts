@@ -47,8 +47,7 @@ function ensureDirSync(dir: string) {
 // Configurable output path function
 function configureOutputPath(destinationPath: string, baseDir: string[]) {
   return baseDir.reduce((result, dir) => {
-    const regexp = new RegExp(`^${dir}\/`);
-    return result.replace(regexp, "");
+    return path.relative(dir, result);
   }, destinationPath);
 }
 
@@ -69,7 +68,7 @@ function getOutputPathsForSourceFile({
   const relPath = path.relative(projectRootDir, sourceFile.getFilePath());
   const outDir = path.join(
     outputRootDir,
-    path.dirname(configureOutputPath(relPath, baseDir))
+    path.dirname(configureOutputPath(relPath, baseDir)),
   );
   let baseName = path.basename(relPath, path.extname(relPath));
   // Remove trailing .d if present
@@ -170,7 +169,7 @@ export function generateMocks({
 
     // Annotate this file's entities with recursion metadata
     astNodes = astNodes.map((e) =>
-      annotateEntityWithRecursion(e, adj, nodeToScc, reachableFrom)
+      annotateEntityWithRecursion(e, adj, nodeToScc, reachableFrom),
     );
 
     // Ensure output directories for astPath and mockPath exist
@@ -185,7 +184,7 @@ export function generateMocks({
     // Helper: resolve base entity by name and optional location across allEntities or fileEntityMap
     function resolveBaseEntity(
       expr: string,
-      loc?: { file: string; line: number }
+      loc?: { file: string; line: number },
     ) {
       const baseName = extractTypeNameFromImportish(expr);
       // Prefer exact location match when provided
@@ -210,13 +209,13 @@ export function generateMocks({
     // Collect properties transitively with cycle protection
     function collectPropsTransitive(
       startExpr: string,
-      startLoc?: { file: string; line: number }
+      startLoc?: { file: string; line: number },
     ) {
       const seen = new Set<string>();
       const out: ASTProperty[] = [];
       function walk(
         expr: string | undefined,
-        loc?: { file: string; line: number }
+        loc?: { file: string; line: number },
       ) {
         if (!expr) return;
         const baseName = extractTypeNameFromImportish(expr);
@@ -269,7 +268,7 @@ export function generateMocks({
       typeToFileMap,
       mappings,
       mappingProvider,
-      format
+      format,
     );
     fs.writeFileSync(mockPath, mockCode, "utf-8");
 
@@ -304,11 +303,11 @@ export function generateMocks({
           const funcName = `Mock${name}`;
           // Determine return type: if we imported it, use the type name; otherwise fallback to unknown
           const hasImport = Array.from(importMap.values()).some((arr) =>
-            arr.includes(name)
+            arr.includes(name),
           );
           const retType = hasImport ? name : "unknown";
           lines.push(
-            `export function ${funcName}(overrides?: Partial<${retType}>): ${retType};`
+            `export function ${funcName}(overrides?: Partial<${retType}>): ${retType};`,
           );
         }
 
