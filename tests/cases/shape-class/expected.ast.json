@@ -1,0 +1,22 @@
+[
+  {
+    "name": "User",
+    "declarationKind": "class",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]

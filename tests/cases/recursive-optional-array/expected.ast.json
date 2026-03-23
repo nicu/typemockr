@@ -1,0 +1,37 @@
+[
+  {
+    "name": "DepartmentListItem",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "subdepartments",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "DepartmentListItem",
+              "sourceFile": "src/input.ts",
+              "genericParameter": false,
+              "typeArguments": []
+            }
+          },
+          "optional": true,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": true
+  }
+]

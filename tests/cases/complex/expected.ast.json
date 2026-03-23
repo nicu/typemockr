@@ -1,0 +1,140 @@
+[
+  {
+    "name": "Product",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Order",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "status",
+          "type": {
+            "kind": "union",
+            "members": [
+              {
+                "kind": "reference",
+                "name": "Product",
+                "sourceFile": "src/input.ts",
+                "genericParameter": false,
+                "typeArguments": []
+              },
+              {
+                "kind": "literal",
+                "value": "draft"
+              }
+            ]
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "items",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "Product",
+              "sourceFile": "src/input.ts",
+              "genericParameter": false,
+              "typeArguments": []
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "moreItems",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "Product",
+              "sourceFile": "src/input.ts",
+              "genericParameter": false,
+              "typeArguments": []
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "metadata",
+          "type": {
+            "kind": "object",
+            "properties": [],
+            "indexSignature": {
+              "key": "string",
+              "value": {
+                "kind": "reference",
+                "name": "Product",
+                "sourceFile": "src/input.ts",
+                "genericParameter": false,
+                "typeArguments": []
+              }
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "address",
+          "type": {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "name",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              },
+              {
+                "name": "number",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              },
+              {
+                "name": "zip",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              }
+            ]
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]

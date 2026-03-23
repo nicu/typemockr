@@ -1,0 +1,103 @@
+[
+  {
+    "name": "PrimitiveBag",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "text",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "count",
+          "type": {
+            "kind": "scalar",
+            "scalar": "number"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "scalar",
+            "scalar": "boolean"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "identifier",
+          "type": {
+            "kind": "scalar",
+            "scalar": "bigint"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "token",
+          "type": {
+            "kind": "scalar",
+            "scalar": "symbol"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "kind": "scalar",
+            "scalar": "date"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "maybeNull",
+          "type": {
+            "kind": "scalar",
+            "scalar": "null"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "maybeUndefined",
+          "type": {
+            "kind": "scalar",
+            "scalar": "undefined"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "anything",
+          "type": {
+            "kind": "scalar",
+            "scalar": "any"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "mystery",
+          "type": {
+            "kind": "scalar",
+            "scalar": "unknown"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]

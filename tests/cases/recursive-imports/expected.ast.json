@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Person",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Product",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "title",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Order",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "person",
+          "type": {
+            "kind": "reference",
+            "name": "Person",
+            "sourceFile": "src/models.ts",
+            "genericParameter": false,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "product",
+          "type": {
+            "kind": "reference",
+            "name": "Product",
+            "sourceFile": "src/models.ts",
+            "genericParameter": false,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "children",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "Order",
+              "sourceFile": "src/order.ts",
+              "genericParameter": false,
+              "typeArguments": []
+            }
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": true
+  }
+]

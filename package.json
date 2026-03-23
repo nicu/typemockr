@@ -24,27 +24,40 @@
   "homepage": "https://github.com/nicu/typemockr#readme",
   "devDependencies": {
     "@types/node": "^20.7.3",
-    "tsup": "^8.5.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.mjs",
+  "module": "dist/esm/index.js",
   "types": "dist/cjs/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/cjs/types/runtime/index.d.ts",
+      "import": "./dist/esm/runtime/index.js",
+      "require": "./dist/cjs/runtime/index.js"
+    }
+  },
   "bin": {
     "typemockr": "dist/bin/typemockr"
   },
   "files": [
-    "dist",
-    "types"
+    "dist"
   ],
   "scripts": {
     "build:esm": "tsc --project tsconfig.esm.json",
     "build:cjs": "tsc --project tsconfig.cjs.json",
     "build": "npm run build:esm && npm run build:cjs",
     "postbuild": "node ./scripts/generate-bin.js",
-    "lint": "tsc"
+    "lint": "tsc --project tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.3.0",
     "ts-morph": "^27.0.0"
   }
 }

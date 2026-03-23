@@ -1,0 +1,191 @@
+[
+  {
+    "name": "Box",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "reference",
+            "name": "T",
+            "genericParameter": true,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [
+      {
+        "name": "T"
+      }
+    ],
+    "recursive": false
+  },
+  {
+    "name": "SomeUseCase",
+    "declarationKind": "class",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "BaseTest",
+    "declarationKind": "class",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "payload",
+          "type": {
+            "kind": "reference",
+            "name": "T",
+            "genericParameter": true,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "items",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "T",
+              "genericParameter": true,
+              "typeArguments": []
+            }
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [
+      {
+        "name": "T"
+      }
+    ],
+    "recursive": false
+  },
+  {
+    "name": "Wrapper",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "item",
+          "type": {
+            "kind": "reference",
+            "name": "T",
+            "genericParameter": true,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "box",
+          "type": {
+            "kind": "reference",
+            "name": "Box",
+            "sourceFile": "src/input.ts",
+            "genericParameter": false,
+            "typeArguments": [
+              {
+                "kind": "reference",
+                "name": "T",
+                "genericParameter": true,
+                "typeArguments": []
+              }
+            ]
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [
+      {
+        "name": "T"
+      }
+    ],
+    "recursive": false
+  },
+  {
+    "name": "Test",
+    "declarationKind": "class",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "box",
+          "type": {
+            "kind": "reference",
+            "name": "Box",
+            "sourceFile": "src/input.ts",
+            "genericParameter": false,
+            "typeArguments": [
+              {
+                "kind": "reference",
+                "name": "SomeUseCase",
+                "sourceFile": "src/input.ts",
+                "genericParameter": false,
+                "typeArguments": []
+              }
+            ]
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "payload",
+          "type": {
+            "kind": "reference",
+            "name": "SomeUseCase",
+            "sourceFile": "src/input.ts",
+            "genericParameter": false,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "items",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "SomeUseCase",
+              "sourceFile": "src/input.ts",
+              "genericParameter": false,
+              "typeArguments": []
+            }
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]

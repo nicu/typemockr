@@ -1,0 +1,229 @@
+[
+  {
+    "name": "User",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "email",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": true,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "UserPick",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "UserOmit",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "UserPartial",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "email",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": true,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "UserRequired",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "email",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "UserReadonly",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "email",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": true,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "UserRecord",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "object",
+      "properties": [],
+      "indexSignature": {
+        "key": "string",
+        "value": {
+          "kind": "scalar",
+          "scalar": "string"
+        }
+      }
+    },
+    "generics": [],
+    "recursive": false
+  }
+]

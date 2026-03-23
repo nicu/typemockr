@@ -1,0 +1,60 @@
+[
+  {
+    "name": "MetadataKey",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "union",
+      "members": [
+        {
+          "kind": "literal",
+          "value": "name"
+        },
+        {
+          "kind": "literal",
+          "value": "link"
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Product",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "metadata",
+          "type": {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "name",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              },
+              {
+                "name": "link",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              }
+            ]
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]
