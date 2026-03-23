@@ -14,5 +14,12 @@
     "moduleResolution": "node",
     "module": "ESNext",
     "noEmit": true
-  }
+  },
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.test.ts",
+    "tests/helpers.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["dist", "node_modules", "src/old", "tests/.tmp", "tests/fixtures"]
 }

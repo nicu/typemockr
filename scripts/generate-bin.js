@@ -6,7 +6,6 @@ const path = require("path");
 
 const outDir = path.join(__dirname, "..", "dist", "bin");
 const outFile = path.join(outDir, "typemockr");
-const cjsEntry = path.join(__dirname, "..", "dist", "cjs", "index.js");
 
 const contents = `#!/usr/bin/env node
 "use strict";
@@ -15,7 +14,7 @@ const contents = `#!/usr/bin/env node
 const path = require("path");
 const fs = require("fs");
 
-const cjs = path.join(__dirname, '..', 'cjs', 'index.js');
+const cjs = path.join(__dirname, '..', 'cjs', 'cli.js');
 
 if (!fs.existsSync(cjs)) {
   console.error("\\n[ typemockr ]: built files not found. Please run npm run build before using the CLI.\\n");
