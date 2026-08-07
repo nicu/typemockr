@@ -15,3 +15,22 @@ export type Settings = Required<
     title?: string;
   }>
 >;
+
+export const FeedOperation = {
+  BulkEnrollment: 0,
+} as const;
+export type FeedOperation = (typeof FeedOperation)[keyof typeof FeedOperation];
+
+export const Channel = {
+  Email: 0,
+  Sms: 1,
+} as const;
+export type Channel = (typeof Channel)[keyof typeof Channel];
+
+export interface IngestRequest {
+  partnerKey?: string | null;
+  operation?: FeedOperation;
+  channel?: Channel;
+  kind: "ingest";
+  version: 2;
+}

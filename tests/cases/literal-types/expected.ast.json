@@ -1,0 +1,121 @@
+[
+  {
+    "name": "BrandFeedOperationType",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "literal",
+      "value": 0
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Channel",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "union",
+      "members": [
+        {
+          "kind": "literal",
+          "value": 0
+        },
+        {
+          "kind": "literal",
+          "value": 1
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Level",
+    "declarationKind": "enum",
+    "type": {
+      "kind": "enum",
+      "values": [
+        "low",
+        "high"
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "IngestRequest",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "partnerKey",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "operation",
+          "type": {
+            "kind": "literal",
+            "value": 0
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "channel",
+          "type": {
+            "kind": "union",
+            "members": [
+              {
+                "kind": "literal",
+                "value": 0
+              },
+              {
+                "kind": "literal",
+                "value": 1
+              }
+            ]
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "level",
+          "type": {
+            "kind": "reference",
+            "name": "Level",
+            "sourceFile": "src/input.ts",
+            "genericParameter": false,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "version",
+          "type": {
+            "kind": "literal",
+            "value": 2
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "literal",
+            "value": true
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]

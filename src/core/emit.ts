@@ -290,7 +290,7 @@ function emitValueEntityBody(
 
   return [
     context.config.format === "ts"
-      ? `  const result: ${typeRef} = ${value} as ${typeRef};`
+      ? `  const result: ${typeRef} = ${stripConstAssertion(value)} as ${typeRef};`
       : `  const result = ${value};`,
     "  return overrides ?? result;",
   ];
@@ -409,9 +409,9 @@ function emitDefaultValueExpression(
     case "scalar":
       return emitScalarExpression(node.scalar);
     case "literal":
-      return emitLiteral(node.value);
+      return emitLiteralExpression(node.value, context.config.format);
     case "enum":
-      return `faker.helpers.arrayElement([${node.values.map((value) => emitLiteral(value)).join(", ")}])`;
+      return emitEnumExpression(node.values, context.config.format);
     case "union":
       return `faker.helpers.arrayElement([${node.members
         .map((member) => emitValueExpression(entity, member, path, context))
@@ -905,6 +905,29 @@ function quote(value: string): string {
 
 function emitLiteral(value: string | number | boolean | null): string {
   return value === null ? "null" : JSON.stringify(value);
+}
+
+// Literal values must keep their literal type, otherwise the untyped `const result = {...}`
+// object literal widens them ("draft" -> string, 0 -> number) and no longer satisfies the
+// declared entity type.
+function emitLiteralExpression(
+  value: string | number | boolean | null,
+  format: TypemockrOutputFormat,
+): string {
+  const literal = emitLiteral(value);
+  return format === "ts" && value !== null ? `${literal} as const` : literal;
+}
+
+function emitEnumExpression(
+  values: Array<string | number>,
+  format: TypemockrOutputFormat,
+): string {
+  const list = values.map((value) => emitLiteralExpression(value, format)).join(", ");
+  return `faker.helpers.arrayElement([${list}])`;
+}
+
+function stripConstAssertion(value: string): string {
+  return value.replace(/ as const$/, "");
 }
 
 function toTypeModuleSpecifier(fromFile: string, toFile: string): string {

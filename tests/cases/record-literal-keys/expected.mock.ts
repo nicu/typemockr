@@ -2,7 +2,7 @@ import { faker } from "@faker-js/faker";
 import type { MetadataKey, Product } from "../src/input";
 
 export function MockMetadataKey(overrides?: MetadataKey): MetadataKey {
-  const result: MetadataKey = faker.helpers.arrayElement(["name", "link"]) as MetadataKey;
+  const result: MetadataKey = faker.helpers.arrayElement(["name" as const, "link" as const]) as MetadataKey;
   return overrides ?? result;
 }
 
