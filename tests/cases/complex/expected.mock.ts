@@ -3,7 +3,7 @@ import type { Order, Product } from "../src/input";
 
 export function MockOrder(overrides: Partial<Order> = {}): Order {
   const result = {
-    "status": faker.helpers.arrayElement([MockProduct(), "draft"]),
+    "status": faker.helpers.arrayElement([MockProduct(), "draft" as const]),
     "items": faker.helpers.multiple(() => MockProduct()),
     "moreItems": faker.helpers.multiple(() => MockProduct()),
     "metadata": {},
