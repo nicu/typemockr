@@ -79,4 +79,35 @@ The 0.1.x options still work. They are applied after `registry`.
 - `mappingProvider`: path to a module exporting `mappingProvider` (named or default). It is called as `mappingProvider(type, path, { sourceFile, entityName })` for scalar values only. `type` is one of `string`, `number`, `bigint`, `boolean`, `date`, `any` or `unknown`. The first non-empty string returned wins.
 - `mappings`: either `{ "*.id": "faker.string.uuid()" }` or `{ "faker.string.uuid()": ["*.id"] }`. `*` is a wildcard, and matching ignores case.
 
-Because TS output is type-checked, a provider should check `type` before returning, so it doesn't return `faker.string.uuid()` for a numeric `id`.
+Because TS output is type-checked, a mapping that returns the wrong type fails `tsc` — `faker.string.uuid()` on a numeric `id` is an error, not a bad value.
+
+### Type-scoped mappings
+
+A name pattern like `*.value` matches fields of every scalar type, so over a large model set it will
+eventually land on one it does not fit. Write `mappings` as an **ordered array** to scope an entry to
+the types it is valid for:
+
+```js
+mappings: [
+  { path: "*.id", type: "string", value: "faker.string.uuid()" },
+
+  // The same name, resolved per type.
+  { path: "*.value", type: "number", value: "faker.number.float({ min: 100, max: 5000 })" },
+  { path: "*.value", type: "string", value: "faker.commerce.productName()" },
+
+  { path: "*.is*", type: "boolean", value: "faker.datatype.boolean()" },
+
+  // No `path` matches every path, so this is a per-type fallback. Keep these last.
+  { type: "date", value: "faker.date.anytime()" },
+  { type: ["any", "unknown"], value: "faker.lorem.words()" },
+]
+```
+
+- `path` is the same `*` glob as the object form, matched case-insensitively. Omit it to match every path.
+- `type` is a scalar kind or a list of them (`string`, `number`, `bigint`, `boolean`, `date`, `any`, `unknown`). Omit it to match every scalar, as the object form does.
+- The first matching entry wins, in array order — unlike the object form, which depends on key order.
+
+You rarely need a catch-all entry. A path with no matching mapping falls through to the built-in
+default for its scalar type (`faker.lorem.words()` for `string`, `faker.number.int()` for `number`,
+`faker.datatype.boolean()` for `boolean`, and so on), which is already type-correct. A `{ path: "*" }`
+entry suppresses those defaults for every type at once, which is almost never what you want.

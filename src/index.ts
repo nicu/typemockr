@@ -23,6 +23,7 @@ export type {
   GenericParameterNode,
   LegacyMappingProvider,
   LegacyMappings,
+  MappingEntry,
   MockNameContext,
   MockNameOption,
   NormalizedProject,
