@@ -70,6 +70,10 @@ describe("config loading", () => {
       "`mappingProvider` must be a path string",
     );
     expect(() => resolveConfig({ ...base, mockName: "Api" })).toThrow('containing "{name}"');
+    expect(() => resolveConfig({ ...base, optional: "sometimes" as "maybe" })).toThrow(
+      "`optional` must be one of maybe, always, never",
+    );
+    expect(resolveConfig({ ...base }).optional).toBe("maybe");
     expect(() => resolveConfig({ ...base, mappings: "x" as unknown as Record<string, string> })).toThrow(
       "`mappings` must be an object or an array of mapping entries",
     );
@@ -78,6 +82,60 @@ describe("config loading", () => {
       { path: "*.id", value: "1" },
     ]);
     expect(resolveConfig({ ...base, $schema: "x" } as typeof base).include).toEqual(["a.ts"]);
+  });
+});
+
+describe("optional properties", () => {
+  const src = [
+    "export interface Booking {",
+    "  id: string;",
+    "  reference?: string;",
+    "  contact?: { email?: string; phone: string };",
+    "  tags?: string[];",
+    "}",
+  ].join("\n");
+
+  test('defaults to wrapping optional properties in faker.helpers.maybe()', async () => {
+    const file = await renderMocksFromSourceText(src);
+
+    expect(file.code).toContain('"reference": faker.helpers.maybe(() => faker.lorem.words()),');
+    expect(file.code).toContain('"email": faker.helpers.maybe(() => faker.lorem.words()),');
+    expect(file.code).toContain('"id": faker.lorem.words(),');
+  });
+
+  test('"always" treats every optional property as required, nested ones included', async () => {
+    const file = await renderMocksFromSourceText(src, { optional: "always" });
+
+    expect(file.code).not.toContain("faker.helpers.maybe");
+    expect(file.code).toContain('"reference": faker.lorem.words(),');
+    expect(file.code).toContain('"email": faker.lorem.words(),');
+    expect(file.code).toContain('"tags": faker.helpers.multiple(() => faker.lorem.words()),');
+  });
+
+  test('"never" omits optional properties but keeps required ones', async () => {
+    const file = await renderMocksFromSourceText(src, { optional: "never" });
+
+    expect(file.code).not.toContain("faker.helpers.maybe");
+    expect(file.code).not.toContain('"reference"');
+    expect(file.code).not.toContain('"contact"');
+    expect(file.code).not.toContain('"tags"');
+    expect(file.code).toContain('"id": faker.lorem.words(),');
+  });
+
+  test('"always" also unwraps a property the registry did not supply a value for', async () => {
+    const { createLegacyRegistry } = await import("../src/core/registry");
+    // Under "maybe", presence depends on whether a mapping happened to match the path.
+    const registry = createLegacyRegistry({
+      mappings: [{ path: "*.reference", type: "string", value: "faker.string.uuid()" }],
+    });
+
+    const maybeFile = await renderMocksFromSourceText(src, { registry });
+    expect(maybeFile.code).toContain('"reference": (faker.string.uuid()) as Booking["reference"],');
+    expect(maybeFile.code).toContain('"email": faker.helpers.maybe(() => faker.lorem.words()),');
+
+    const alwaysFile = await renderMocksFromSourceText(src, { registry, optional: "always" });
+    expect(alwaysFile.code).toContain('"reference": (faker.string.uuid()) as Booking["reference"],');
+    expect(alwaysFile.code).toContain('"email": faker.lorem.words(),');
   });
 });
 

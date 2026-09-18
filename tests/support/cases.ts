@@ -6,6 +6,7 @@ import type {
   EntityNode,
   GenerationRegistry,
   ResolvedTypemockrConfig,
+  TypemockrOptionalMode,
   TypemockrOutputFormat,
   VirtualSourceFile,
 } from "../../src/core/types";
@@ -79,6 +80,14 @@ export function readExpectedOutputs(
   );
 }
 
+/** Cases that need non-default emit options drop a `config.json` next to their `src`. */
+function loadCaseConfig(caseDir: string): { optional?: TypemockrOptionalMode } {
+  const configPath = join(caseDir, "config.json");
+  return existsSync(configPath)
+    ? (JSON.parse(readFileSync(configPath, "utf8")) as { optional?: TypemockrOptionalMode })
+    : {};
+}
+
 /** Cases that need registry-provided values drop a `registry.json` next to their `src`. */
 function loadCaseRegistry(caseDir: string): GenerationRegistry {
   const registryPath = join(caseDir, "registry.json");
@@ -121,6 +130,7 @@ function createCaseConfig(
     registryFile: undefined,
     tsconfigPath: undefined,
     configFile: undefined,
+    optional: loadCaseConfig(caseDir).optional ?? "maybe",
   };
 }
 

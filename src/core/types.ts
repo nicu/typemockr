@@ -1,6 +1,19 @@
 export type PrimitiveLiteral = string | number | boolean | null;
 export type TypemockrOutputFormat = "ts" | "js";
 
+/**
+ * How an optional (`prop?:`) property is generated.
+ *
+ * - `maybe` (default): wrap in `faker.helpers.maybe()`, so the property is present at random.
+ * - `always`: treat optional as required and always emit a value. Use this when `?` carries no
+ *   intent, as in models generated from a backend schema that marks everything optional.
+ * - `never`: omit optional properties entirely.
+ *
+ * `always` and `never` apply to every optional property. `maybe` keeps the long-standing quirk
+ * that a property whose value came from the registry is emitted unwrapped.
+ */
+export type TypemockrOptionalMode = "maybe" | "always" | "never";
+
 export type ScalarKind =
   | "string"
   | "number"
@@ -178,6 +191,7 @@ export interface TypemockrConfig {
   tsconfig?: string;
   projectRootDir?: string;
   format?: TypemockrOutputFormat;
+  optional?: TypemockrOptionalMode;
 }
 
 export interface ResolvedTypemockrConfig {
@@ -192,6 +206,7 @@ export interface ResolvedTypemockrConfig {
   tsconfigPath?: string;
   configFile?: string;
   format: TypemockrOutputFormat;
+  optional: TypemockrOptionalMode;
 }
 
 export interface GeneratedFile {
@@ -215,6 +230,7 @@ export interface RenderSourceTextOptions {
   registryFilePath?: string;
   registry?: GenerationRegistry;
   format?: TypemockrOutputFormat;
+  optional?: TypemockrOptionalMode;
   mockName?: MockNameOption;
 }
 

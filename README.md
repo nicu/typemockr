@@ -17,6 +17,7 @@ Without an argument, the CLI looks for `typemockr.config.ts`, `typemockr.config.
 | `outDir` | **Required.** Output directory. Each source file produces `<outDir>/<path relative to baseDir>/<name>.mock.<format>`. |
 | `baseDir` | Directories stripped from source paths when computing output paths. |
 | `format` | `"ts"` (default) or `"js"` (with JSDoc types). |
+| `optional` | How `prop?:` is generated: `"maybe"` (default), `"always"` or `"never"` (see [Optional properties](#optional-properties)). |
 | `tsconfig` | tsconfig used to resolve types. Defaults to `./tsconfig.json` if present. |
 | `registry` | Module exporting custom values (see [Registry](#registry)). |
 | `mappingProvider` | Module exporting a 0.1.x-style `mappingProvider(type, path, context)` function (see [Legacy mappings](#legacy-mappings)). |
@@ -71,6 +72,54 @@ export default {
 ```
 
 Paths look like `Entity.prop`, `Entity.prop.nested`, and `Entity.list[]` for array elements. In TS output, registry values are asserted to the property type, so an expression of the wrong type fails `tsc`.
+
+### Optional properties
+
+By default an optional property is wrapped in `faker.helpers.maybe()`, so it is present about half
+the time. `optional` changes that for every optional property:
+
+| Value | Output for `reference?: string` |
+| --- | --- |
+| `"maybe"` (default) | `"reference": faker.helpers.maybe(() => faker.lorem.words()),` |
+| `"always"` | `"reference": faker.lorem.words(),` |
+| `"never"` | *(the property is left out of the literal)* |
+
+Use `"always"` when `?` carries no intent — models generated from a backend schema often mark every
+field optional, and a mock that randomly drops half of them is noise rather than coverage. It also
+makes the shape of a mock stable, so a test narrows from a complete object instead of repairing an
+arbitrary one:
+
+```ts
+const booking = MockBooking({ paymentToken: undefined });
+```
+
+Note that under `"maybe"`, a property whose value comes from `registry` or `mappings` is emitted
+unwrapped, so whether a property is present depends on whether a mapping matched its path. `"always"`
+and `"never"` apply uniformly and do not have that quirk.
+
+#### Fields that depend on each other
+
+No global setting can express "if `paymentMethod` is set then `paymentToken` is required, and
+`refundReason` must be absent" — a schema that marks everything optional has already lost that
+information. Use `rules` for the entities whose invariants you actually assert on; rule lines run
+after `overrides` are applied and can adjust `result`:
+
+```js
+export default {
+  rules: {
+    Booking: ["if (!result.paymentMethod) { delete result.paymentToken; }"],
+  },
+};
+```
+
+```ts
+export function MockBooking(overrides: Partial<Booking> = {}): Booking {
+  const base = { /* ... */ };
+  const result = { ...base, ...overrides };
+  if (!result.paymentMethod) { delete result.paymentToken; }
+  return result;
+}
+```
 
 ### Legacy mappings
 

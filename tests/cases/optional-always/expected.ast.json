@@ -1,0 +1,130 @@
+[
+  {
+    "name": "Contact",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "phone",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "email",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": true,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Booking",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "reference",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "seatCount",
+          "type": {
+            "kind": "scalar",
+            "scalar": "number"
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "cancelledAt",
+          "type": {
+            "kind": "scalar",
+            "scalar": "date"
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "contact",
+          "type": {
+            "kind": "reference",
+            "name": "Contact",
+            "sourceFile": "src/input.ts",
+            "genericParameter": false,
+            "typeArguments": []
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "inline",
+          "type": {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "note",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": true,
+                "readonly": false
+              },
+              {
+                "name": "kind",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              }
+            ]
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "tags",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          },
+          "optional": true,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]
