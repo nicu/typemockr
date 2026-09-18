@@ -1,7 +1,9 @@
-import { basename, dirname, extname, join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { basename, dirname, extname, join, relative, sep } from "node:path";
 import { buildEntityGraph } from "./graph";
 import type {
   EntityNode,
+  EnumNode,
   FileModel,
   GeneratedFile,
   GenerationRegistry,
@@ -19,12 +21,25 @@ interface EmitContext {
   registry: GenerationRegistry;
   outputPathBySource: Map<string, string>;
   graph: Map<string, Set<string>>;
+  mockName(entity: Pick<EntityNode, "name" | "sourceFile">): string;
+  entitiesByMockName: Map<string, EntityNode[]>;
 }
 
 interface ImportBinding {
   exportedName: string;
   localName: string;
 }
+
+interface FileEmitContext extends EmitContext {
+  file: FileModel;
+  outputFile: string;
+  externalMockImports: Map<string, ImportBinding>;
+  /** Local type names of enums imported for literal casts, keyed by `sourceFile::name`. */
+  enumTypeImports: Map<string, string>;
+}
+
+const DEFAULT_MOCK_NAME = "Mock{name}";
+const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 export function emitFiles(
   project: NormalizedProject,
@@ -34,12 +49,33 @@ export function emitFiles(
   const outputPathBySource = new Map(
     project.files.map((file) => [file.sourceFile, getOutputFilePath(config, file.sourceFile)]),
   );
+  assertUniqueOutputFiles(outputPathBySource);
+
+  const mockName = createMockNamer(config);
+  const entitiesByMockName = new Map<string, EntityNode[]>();
+  for (const entity of project.entities) {
+    const name = mockName(entity);
+    entitiesByMockName.set(name, [...(entitiesByMockName.get(name) ?? []), entity]);
+  }
+
+  for (const file of project.files) {
+    const names = file.entities.map((entity) => mockName(entity));
+    const duplicate = names.find((name, index) => names.indexOf(name) !== index);
+    if (duplicate) {
+      throw new Error(
+        `mockName produced \`${duplicate}\` for more than one type in ${file.sourceFile}. Include \`{name}\` in the template.`,
+      );
+    }
+  }
+
   const context: EmitContext = {
     config,
     project,
     registry,
     outputPathBySource,
     graph: buildEntityGraph(project),
+    mockName,
+    entitiesByMockName,
   };
 
   return project.files.map((file) => {
@@ -73,11 +109,55 @@ export function getOutputFilePath(
   );
 }
 
+export function createMockNamer(
+  config: Pick<ResolvedTypemockrConfig, "mockName" | "baseDir" | "projectRootDir">,
+): (entity: Pick<EntityNode, "name" | "sourceFile">) => string {
+  const option = config.mockName ?? DEFAULT_MOCK_NAME;
+  const cache = new Map<string, string>();
+
+  return ({ name, sourceFile }) => {
+    const key = `${sourceFile}::${name}`;
+    const cached = cache.get(key);
+    if (cached) {
+      return cached;
+    }
+
+    const dir = toPascalCase(dirname(getRelativeSourcePath(config, sourceFile)));
+    const result = typeof option === "function"
+      ? option({ name, sourceFile, dir })
+      : option.replaceAll("{name}", name).replaceAll("{dir}", dir);
+
+    if (typeof result !== "string" || !IDENTIFIER.test(result)) {
+      throw new Error(
+        `mockName produced ${JSON.stringify(result)} for ${name} (${sourceFile}), which is not a valid identifier.`,
+      );
+    }
+
+    cache.set(key, result);
+    return result;
+  };
+}
+
+function assertUniqueOutputFiles(outputPathBySource: Map<string, string>) {
+  const sourceByOutput = new Map<string, string>();
+
+  for (const [sourceFile, outputFile] of outputPathBySource) {
+    const existing = sourceByOutput.get(outputFile);
+    if (existing) {
+      throw new Error(
+        `${existing} and ${sourceFile} would both generate ${outputFile}. Exclude one of them from \`include\` or adjust \`baseDir\`.`,
+      );
+    }
+    sourceByOutput.set(outputFile, sourceFile);
+  }
+}
+
 function emitFile(file: FileModel, outputFile: string, context: EmitContext): string {
-  const externalMockImports = collectExternalMockImports(file, outputFile, context);
+  const externalMockImports = collectExternalMockImports(file, context);
+  const enumTypeImports = collectEnumTypeImports(file, context, externalMockImports);
   const importLines = [
     'import { faker } from "@faker-js/faker";',
-    ...emitTypeImportLines(file, outputFile, context.config.format),
+    ...emitTypeImportLines(file, outputFile, context.config.format, enumTypeImports),
     ...emitExternalMockImportLines(
       externalMockImports,
       outputFile,
@@ -92,6 +172,7 @@ function emitFile(file: FileModel, outputFile: string, context: EmitContext): st
         file,
         outputFile,
         externalMockImports,
+        enumTypeImports,
       }),
     )
     .join("\n\n");
@@ -103,30 +184,100 @@ function emitTypeImportLines(
   file: FileModel,
   outputFile: string,
   format: TypemockrOutputFormat,
+  enumTypeImports: Map<string, string>,
 ): string[] {
   if (format !== "ts" || file.entities.length === 0) {
     return [];
   }
 
+  const enumImports = new Map<string, string[]>();
+
+  for (const [key, localName] of enumTypeImports) {
+    const separatorIndex = key.lastIndexOf("::");
+    const sourceFile = key.slice(0, separatorIndex);
+    if (sourceFile === file.sourceFile) {
+      // Already imported with the entity types below.
+      continue;
+    }
+
+    const exportedName = key.slice(separatorIndex + 2);
+    const specifier = toSourceModuleSpecifier(outputFile, sourceFile);
+    const list = enumImports.get(specifier) ?? [];
+    list.push(exportedName === localName ? exportedName : `${exportedName} as ${localName}`);
+    enumImports.set(specifier, list);
+  }
+
   return [
-    `import type { ${file.entities.map((entity) => entity.name).join(", ")} } from ${quote(
-      toTypeModuleSpecifier(outputFile, file.sourceFile),
-    )};`,
-  ];
+    [
+      toSourceModuleSpecifier(outputFile, file.sourceFile),
+      file.entities.map((entity) => entity.name),
+    ] as const,
+    ...[...enumImports.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([specifier, names]) => [specifier, names.sort()] as const),
+  ].map(
+    ([specifier, names]) => `import type { ${names.join(", ")} } from ${quote(specifier)};`,
+  );
+}
+
+function collectEnumTypeImports(
+  file: FileModel,
+  context: EmitContext,
+  externalMockImports: Map<string, ImportBinding>,
+): Map<string, string> {
+  const imports = new Map<string, string>();
+  if (context.config.format !== "ts") {
+    return imports;
+  }
+
+  const fileTypeNames = new Set(file.entities.map((entity) => entity.name));
+  const usedNames = new Set([
+    ...fileTypeNames,
+    ...file.entities.map((entity) => context.mockName(entity)),
+    ...[...externalMockImports.values()].map((binding) => binding.localName),
+  ]);
+
+  for (const entity of file.entities) {
+    visitTypeNode(entity.type, (node) => {
+      const source = node.kind === "enum" ? node.source : undefined;
+      if (!source?.exported) {
+        return;
+      }
+
+      const key = `${source.sourceFile}::${source.name}`;
+      if (imports.has(key)) {
+        return;
+      }
+
+      // Exported enums declared in this file are already imported with the entity types.
+      if (source.sourceFile === file.sourceFile && fileTypeNames.has(source.name)) {
+        imports.set(key, source.name);
+        return;
+      }
+
+      let localName = source.name;
+      let suffix = 2;
+      while (usedNames.has(localName)) {
+        localName = `${source.name}_${suffix}`;
+        suffix += 1;
+      }
+
+      usedNames.add(localName);
+      imports.set(key, localName);
+    });
+  }
+
+  return imports;
 }
 
 function emitEntity(
   entity: EntityNode,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string {
   const docs = context.config.format === "js"
     ? emitJsDoc(entity, context.outputFile)
     : [];
-  const signature = emitFunctionSignature(entity, context.config.format);
+  const signature = emitFunctionSignature(entity, context.config.format, context.mockName);
   const body = emitEntityBody(entity, context);
 
   return [...docs, signature, ...body, "}"].join("\n");
@@ -135,8 +286,9 @@ function emitEntity(
 function emitFunctionSignature(
   entity: EntityNode,
   format: TypemockrOutputFormat,
+  mockName: EmitContext["mockName"],
 ): string {
-  const functionName = getMockFunctionName(entity.name);
+  const functionName = mockName(entity);
   const genericParams = format === "ts" ? emitTsGenericParams(entity) : "";
   const params = format === "ts"
     ? emitTsFunctionParams(entity)
@@ -214,11 +366,7 @@ function emitJsDoc(entity: EntityNode, outputFile: string): string[] {
 
 function emitEntityBody(
   entity: EntityNode,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string[] {
   const ruleLines = getRuleLines(entity, context.registry);
 
@@ -235,11 +383,7 @@ function emitEntityBody(
 
 function emitEntityBodyAfterOptions(
   entity: EntityNode,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
   ruleLines: string[],
 ): string[] {
   if (entity.type.kind === "object") {
@@ -252,25 +396,25 @@ function emitEntityBodyAfterOptions(
 function emitObjectEntityBody(
   entity: EntityNode,
   node: ObjectNode,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
   ruleLines: string[],
 ): string[] {
   const resultLines = emitObjectLiteralLines(entity, node, entity.name, context, 2);
+  // Classes with private/protected members can't be satisfied by an object literal.
+  const assertion = node.nominal && context.config.format === "ts"
+    ? ` as ${getEntityTypeReference(entity)}`
+    : "";
 
   if (ruleLines.length === 0) {
     return [
       ...resultLines,
-      "  return { ...result, ...overrides };",
+      `  return { ...result, ...overrides }${assertion};`,
     ];
   }
 
   return [
     ...renameLeadingConst(resultLines, "base"),
-    "  const result = { ...base, ...overrides };",
+    `  const result = { ...base, ...overrides }${assertion};`,
     ...indentSnippetLines(ruleLines, 2),
     "  return result;",
   ];
@@ -279,11 +423,7 @@ function emitObjectEntityBody(
 function emitValueEntityBody(
   entity: EntityNode,
   node: TypeNode,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string[] {
   const value = emitValueExpression(entity, node, entity.name, context);
   const typeRef = getEntityTypeReference(entity);
@@ -300,11 +440,7 @@ function emitObjectLiteralLines(
   entity: EntityNode,
   node: ObjectNode,
   path: string,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
   indent: number,
 ): string[] {
   const properties = node.properties.map((property) => {
@@ -329,11 +465,7 @@ function emitNestedObjectExpression(
   entity: EntityNode,
   node: ObjectNode,
   path: string,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
   indent: number,
 ): string {
   const properties = node.properties.map((property) => {
@@ -356,11 +488,7 @@ function emitPropertyValue(
   entity: EntityNode,
   property: ObjectNode["properties"][number],
   parentPath: string,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string {
   const path = joinPath(parentPath, property.name);
   const segments = [...parentPath.split(".").slice(1), property.name];
@@ -385,11 +513,7 @@ function emitValueExpression(
   entity: EntityNode,
   node: TypeNode,
   path: string,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string {
   const custom = resolveRegistryExpression(entity, node, path, context.registry);
   return custom ?? emitDefaultValueExpression(entity, node, path, context);
@@ -399,11 +523,7 @@ function emitDefaultValueExpression(
   entity: EntityNode,
   node: TypeNode,
   path: string,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string {
   switch (node.kind) {
     case "scalar":
@@ -411,7 +531,7 @@ function emitDefaultValueExpression(
     case "literal":
       return emitLiteralExpression(node.value, context.config.format);
     case "enum":
-      return emitEnumExpression(node.values, context.config.format);
+      return emitEnumExpression(node, context);
     case "union":
       return `faker.helpers.arrayElement([${node.members
         .map((member) => emitValueExpression(entity, member, path, context))
@@ -459,11 +579,7 @@ function emitArrayExpression(
   entity: EntityNode,
   element: TypeNode,
   path: string,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string {
   const value = emitValueExpression(entity, element, `${path}[]`, context);
   const arrayExpression = `faker.helpers.multiple(() => ${wrapArrowValue(value)})`;
@@ -496,11 +612,7 @@ function emitReferenceExpression(
   entity: EntityNode,
   node: ReferenceNode,
   path: string,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string {
   if (node.genericParameter) {
     return `mock${node.name}()`;
@@ -519,11 +631,7 @@ function emitReferenceArguments(
   node: ReferenceNode,
   targetEntity: EntityNode | undefined,
   path: string,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
   includeOptions: boolean,
 ): string[] {
   const args: string[] = [];
@@ -572,27 +680,25 @@ function trimTrailingUndefinedArgs(args: string[], includeOptions: boolean): str
 
 function resolveMockFunctionName(
   node: ReferenceNode,
-  context: EmitContext & {
-    file: FileModel;
-    outputFile: string;
-    externalMockImports: Map<string, ImportBinding>;
-  },
+  context: FileEmitContext,
 ): string {
+  const target = resolveReferencedEntity(node, context.project);
+  const ownName = context.mockName(target ?? { name: node.name, sourceFile: node.sourceFile ?? "" });
+
   if (!node.sourceFile || node.sourceFile === context.file.sourceFile) {
-    return getMockFunctionName(node.name);
+    return ownName;
   }
 
   const binding = context.externalMockImports.get(`${node.sourceFile}::${node.name}`);
-  return binding?.localName ?? getMockFunctionName(node.name);
+  return binding?.localName ?? ownName;
 }
 
 function collectExternalMockImports(
   file: FileModel,
-  outputFile: string,
   context: EmitContext,
 ): Map<string, ImportBinding> {
   const grouped = new Map<string, ImportBinding>();
-  const usedLocalNames = new Set(file.entities.map((entity) => getMockFunctionName(entity.name)));
+  const usedLocalNames = new Set(file.entities.map((entity) => context.mockName(entity)));
 
   const register = (target: EntityNode) => {
     if (target.sourceFile === file.sourceFile) {
@@ -604,7 +710,7 @@ function collectExternalMockImports(
       return;
     }
 
-    const exportedName = getMockFunctionName(target.name);
+    const exportedName = context.mockName(target);
     let localName = exportedName;
     let suffix = 2;
 
@@ -637,16 +743,12 @@ function collectExternalMockImports(
     });
 
     for (const snippet of getRegistrySnippetsForEntity(entity, context.registry)) {
-      for (const mockName of findMockReferences(snippet)) {
-        const target = resolveUniqueEntityByName(mockName, context.project);
-        if (target) {
-          register(target);
-        }
+      for (const target of findMockReferences(snippet, context.entitiesByMockName)) {
+        register(target);
       }
     }
   }
 
-  void outputFile;
   return grouped;
 }
 
@@ -729,6 +831,7 @@ function resolveRegistryExpression(
     kind: node.kind,
     path,
     entityName: entity.name,
+    sourceFile: entity.sourceFile,
     scalar: node.kind === "scalar" ? node.scalar : undefined,
     targetName:
       node.kind === "reference" && !node.genericParameter ? node.name : undefined,
@@ -793,7 +896,7 @@ function applyPropertyTypeAssertion(
 }
 
 function getJsDocEntityTypeReference(entity: EntityNode, outputFile: string): string {
-  const moduleSpecifier = toTypeModuleSpecifier(outputFile, entity.sourceFile);
+  const moduleSpecifier = toSourceModuleSpecifier(outputFile, entity.sourceFile);
   const genericArgs = entity.generics.length === 0
     ? ""
     : `<${entity.generics.map((generic) => generic.name).join(", ")}>`;
@@ -810,13 +913,6 @@ function resolveReferencedEntity(
     : undefined;
 }
 
-function resolveUniqueEntityByName(
-  name: string,
-  project: NormalizedProject,
-): EntityNode | undefined {
-  const matches = project.entities.filter((entity) => entity.name === name);
-  return matches.length === 1 ? matches[0] : undefined;
-}
 
 function isRecursiveReference(
   entity: EntityNode,
@@ -856,13 +952,18 @@ function hasPath(
   return false;
 }
 
-function findMockReferences(code: string): string[] {
-  const matches = new Set<string>();
+// Finds calls to generated mocks in registry snippets. Names shared by several types are
+// ambiguous and left for the snippet author to import.
+function findMockReferences(
+  code: string,
+  entitiesByMockName: Map<string, EntityNode[]>,
+): EntityNode[] {
+  const matches = new Set<EntityNode>();
 
-  for (const match of code.matchAll(/\bMock([A-Za-z0-9_]+)\s*\(/g)) {
-    const name = match[1];
-    if (name) {
-      matches.add(name);
+  for (const match of code.matchAll(/(?<![\w$.])([A-Za-z_$][\w$]*)\s*\(/g)) {
+    const candidates = match[1] ? entitiesByMockName.get(match[1]) : undefined;
+    if (candidates?.length === 1) {
+      matches.add(candidates[0]!);
     }
   }
 
@@ -895,10 +996,6 @@ function joinPath(parent: string, child: string): string {
   return `${parent}.${child}`;
 }
 
-function getMockFunctionName(typeName: string): string {
-  return `Mock${typeName}`;
-}
-
 function quote(value: string): string {
   return JSON.stringify(value);
 }
@@ -918,11 +1015,34 @@ function emitLiteralExpression(
   return format === "ts" && value !== null ? `${literal} as const` : literal;
 }
 
-function emitEnumExpression(
-  values: Array<string | number>,
-  format: TypemockrOutputFormat,
-): string {
-  const list = values.map((value) => emitLiteralExpression(value, format)).join(", ");
+// String enums reject plain literals, so TS output casts each value to its enum member
+// (`"Active" as Status.Active`). Enums that can't be imported fall back to `never`.
+function emitEnumExpression(node: EnumNode, context: FileEmitContext): string {
+  const source = node.source;
+  const typeName = source
+    ? context.enumTypeImports.get(`${source.sourceFile}::${source.name}`)
+    : undefined;
+
+  const list = node.values
+    .map((value, index) => {
+      if (context.config.format !== "ts" || !source) {
+        return emitLiteralExpression(value, context.config.format);
+      }
+
+      if (!typeName) {
+        return `${emitLiteral(value)} as never`;
+      }
+
+      const member = source.members[index];
+      if (member === undefined) {
+        return `${emitLiteral(value)} as ${typeName}`;
+      }
+
+      return IDENTIFIER.test(member)
+        ? `${emitLiteral(value)} as ${typeName}.${member}`
+        : `${emitLiteral(value)} as (typeof ${typeName})[${quote(member)}]`;
+    })
+    .join(", ");
   return `faker.helpers.arrayElement([${list}])`;
 }
 
@@ -932,6 +1052,78 @@ function stripConstAssertion(value: string): string {
 
 function toTypeModuleSpecifier(fromFile: string, toFile: string): string {
   return toModuleSpecifier(fromFile, toFile, false);
+}
+
+// Types from installed packages are imported by package name, e.g.
+// `node_modules/@acme/models/lib/Cart.d.ts` -> `@acme/models/lib/Cart`.
+function toSourceModuleSpecifier(fromFile: string, sourceFile: string): string {
+  return getPackageModuleSpecifier(sourceFile) ?? toTypeModuleSpecifier(fromFile, sourceFile);
+}
+
+const packageEntryCache = new Map<string, string | undefined>();
+
+export function getPackageModuleSpecifier(sourceFile: string): string | undefined {
+  const normalized = sourceFile.split(sep).join("/");
+  const marker = "/node_modules/";
+  const index = normalized.lastIndexOf(marker);
+  if (index === -1) {
+    return undefined;
+  }
+
+  const segments = normalized.slice(index + marker.length).split("/");
+  const nameLength = segments[0]?.startsWith("@") ? 2 : 1;
+  if (segments.length <= nameLength) {
+    return undefined;
+  }
+
+  const packageDir = normalized.slice(0, index + marker.length) +
+    segments.slice(0, nameLength).join("/");
+  const packageName = toImportablePackageName(segments.slice(0, nameLength).join("/"));
+  const subpath = stripSourceExtension(segments.slice(nameLength).join("/"));
+
+  return subpath === getPackageTypesEntry(packageDir)
+    ? packageName
+    : `${packageName}/${subpath}`;
+}
+
+function toImportablePackageName(packageName: string): string {
+  if (!packageName.startsWith("@types/")) {
+    return packageName;
+  }
+
+  const name = packageName.slice("@types/".length);
+  return name.includes("__") ? `@${name.replace("__", "/")}` : name;
+}
+
+function getPackageTypesEntry(packageDir: string): string | undefined {
+  if (packageEntryCache.has(packageDir)) {
+    return packageEntryCache.get(packageDir);
+  }
+
+  let entry: string | undefined;
+  try {
+    const manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")) as {
+      types?: unknown;
+      typings?: unknown;
+    };
+    const types = manifest.types ?? manifest.typings ?? "index.d.ts";
+    entry = typeof types === "string"
+      ? stripSourceExtension(types.replace(/^\.\//, ""))
+      : undefined;
+  } catch {
+    entry = "index";
+  }
+
+  packageEntryCache.set(packageDir, entry);
+  return entry;
+}
+
+function toPascalCase(directory: string): string {
+  return directory
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map((segment) => segment[0]!.toUpperCase() + segment.slice(1))
+    .join("");
 }
 
 function toRuntimeModuleSpecifier(fromFile: string, toFile: string): string {
@@ -949,7 +1141,7 @@ function toModuleSpecifier(
 }
 
 function getRelativeSourcePath(
-  config: ResolvedTypemockrConfig,
+  config: Pick<ResolvedTypemockrConfig, "baseDir" | "projectRootDir">,
   sourceFile: string,
 ): string {
   const defaultRelative = relative(config.projectRootDir, sourceFile);
@@ -970,6 +1162,11 @@ function isInside(parent: string, child: string): boolean {
 }
 
 function stripSourceExtension(filePath: string): string {
+  const declaration = /\.d\.[cm]?ts$/.exec(filePath);
+  if (declaration) {
+    return filePath.slice(0, -declaration[0].length);
+  }
+
   const extension = extname(filePath);
   return extension ? filePath.slice(0, -extension.length) : filePath;
 }

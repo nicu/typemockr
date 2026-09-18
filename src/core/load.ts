@@ -18,6 +18,20 @@ const CONFIG_FILE_NAMES = [
   "typemockr.json",
 ] as const;
 
+const CONFIG_KEYS = [
+  "$schema",
+  "include",
+  "outDir",
+  "baseDir",
+  "registry",
+  "mappingProvider",
+  "mappings",
+  "mockName",
+  "tsconfig",
+  "projectRootDir",
+  "format",
+] as const;
+
 type RequireExtension = (
   module: NodeJS.Module & { _compile(code: string, filename: string): void },
   filename: string,
@@ -42,25 +56,76 @@ export async function loadConfig(
     );
   }
 
-  const loaded = loadConfigModule(configFile);
-  const config = extractConfigValue(loaded);
+  if (!existsSync(configFile)) {
+    throw new Error(`Config file ${configFile} does not exist.`);
+  }
 
-  return {
-    ...resolveConfig({
-      ...config,
-      projectRootDir: root,
-    }),
-    configFile,
-  };
+  const loaded = loadConfigModule(configFile);
+
+  try {
+    return {
+      ...resolveConfig({
+        ...extractConfigValue(loaded),
+        projectRootDir: root,
+      }),
+      configFile,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid typemockr config ${configFile}: ${message}`);
+  }
 }
 
 export function resolveConfig(config: TypemockrConfig): ResolvedTypemockrConfig {
-  if (!Array.isArray(config.include) || config.include.length === 0) {
-    throw new Error("`include` must be a non-empty array.");
+  assertKnownKeys(config);
+
+  if (
+    !Array.isArray(config.include) ||
+    config.include.length === 0 ||
+    !config.include.every((entry) => typeof entry === "string")
+  ) {
+    throw new Error("`include` must be a non-empty array of strings.");
   }
 
-  if (!config.outDir) {
-    throw new Error("`outDir` is required.");
+  if (typeof config.outDir !== "string" || config.outDir.length === 0) {
+    throw new Error("`outDir` is required and must be a string.");
+  }
+
+  if (
+    config.baseDir !== undefined &&
+    (!Array.isArray(config.baseDir) ||
+      !config.baseDir.every((entry) => typeof entry === "string"))
+  ) {
+    throw new Error("`baseDir` must be an array of strings.");
+  }
+
+  if (config.format !== undefined && config.format !== "ts" && config.format !== "js") {
+    throw new Error('`format` must be "ts" or "js".');
+  }
+
+  for (const key of ["registry", "mappingProvider", "tsconfig"] as const) {
+    if (config[key] !== undefined && typeof config[key] !== "string") {
+      throw new Error(`\`${key}\` must be a path string.`);
+    }
+  }
+
+  if (
+    config.mappings !== undefined &&
+    (!config.mappings ||
+      typeof config.mappings !== "object" ||
+      Array.isArray(config.mappings))
+  ) {
+    throw new Error("`mappings` must be an object.");
+  }
+
+  if (
+    config.mockName !== undefined &&
+    typeof config.mockName !== "function" &&
+    (typeof config.mockName !== "string" || !config.mockName.includes("{name}"))
+  ) {
+    throw new Error(
+      '`mockName` must be a function or a template string containing "{name}", e.g. "MockApi{name}".',
+    );
   }
 
   const projectRootDir = resolve(config.projectRootDir ?? process.cwd());
@@ -74,9 +139,25 @@ export function resolveConfig(config: TypemockrConfig): ResolvedTypemockrConfig 
       resolve(projectRootDir, entry),
     ),
     registryFile: resolveOptional(projectRootDir, config.registry),
+    mappingProviderFile: resolveOptional(projectRootDir, config.mappingProvider),
+    mappings: config.mappings,
+    mockName: config.mockName,
     tsconfigPath: tsconfigCandidate ?? resolveDefaultTsconfig(projectRootDir),
     format: config.format ?? "ts",
   };
+}
+
+function assertKnownKeys(config: TypemockrConfig) {
+  const known = new Set<string>(CONFIG_KEYS);
+  const unknown = Object.keys(config).filter((key) => !known.has(key));
+
+  if (unknown.length > 0) {
+    throw new Error(
+      `Unknown config key${unknown.length === 1 ? "" : "s"} ${unknown
+        .map((key) => `\`${key}\``)
+        .join(", ")}. Supported keys: ${CONFIG_KEYS.filter((key) => key !== "$schema").join(", ")}.`,
+    );
+  }
 }
 
 export function createProject(config: ResolvedTypemockrConfig): Project {
@@ -105,6 +186,10 @@ export function createVirtualProject(sourceFiles: VirtualSourceFile[]): Project 
 }
 
 export function loadModuleFromFile(filePath: string): unknown {
+  if (!isFile(filePath)) {
+    throw new Error(`Module ${filePath} does not exist.`);
+  }
+
   return loadConfigModule(filePath);
 }
 
@@ -214,21 +299,12 @@ function extractConfigValue(loaded: unknown): TypemockrConfig {
       config?: unknown;
     };
     const value = maybeObject.default ?? maybeObject.config ?? maybeObject;
-    if (isTypemockrConfig(value)) {
-      return value;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as TypemockrConfig;
     }
   }
 
   throw new Error("Config file must export a typemockr config object.");
-}
-
-function isTypemockrConfig(value: unknown): value is TypemockrConfig {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      Array.isArray((value as TypemockrConfig).include) &&
-      typeof (value as TypemockrConfig).outDir === "string",
-  );
 }
 
 function expandProjectWithLocalImports(project: Project) {

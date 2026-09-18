@@ -1,0 +1,5 @@
+{
+  "name": "@acme/models",
+  "version": "1.0.0",
+  "types": "lib/index.d.ts"
+}

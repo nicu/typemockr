@@ -1,0 +1,6 @@
+{
+  "include": ["node_modules/@acme/models/lib/**/*.d.ts"],
+  "baseDir": ["node_modules/@acme/models/lib"],
+  "outDir": "$mock/api",
+  "mockName": "MockApi{dir}{name}"
+}

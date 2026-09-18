@@ -53,3 +53,31 @@ describe("generateMocks", () => {
     );
   });
 });
+
+describe("mockName", () => {
+  test("supports a function and renames exports and references", async () => {
+    const { renderMocksFromSourceText } = await import("../src/index");
+    const file = await renderMocksFromSourceText(
+      "export interface Leaf { v: string }\nexport interface Tree { leaf: Leaf }",
+      {
+        sourceFilePath: "src/deep/tree-models/input.ts",
+        mockName: ({ name, dir }) => `build${dir}${name}`,
+      },
+    );
+
+    expect(file.code).toContain("export function buildDeepTreeModelsLeaf(");
+    expect(file.code).toContain('"leaf": buildDeepTreeModelsLeaf(),');
+  });
+
+  test("rejects names that are not identifiers or not unique within a file", async () => {
+    const { renderMocksFromSourceText } = await import("../src/index");
+    await expect(
+      renderMocksFromSourceText("export interface A { v: string }", { mockName: "Mock-{name}" }),
+    ).rejects.toThrow(/not a valid identifier/);
+    await expect(
+      renderMocksFromSourceText("export interface A { v: string }\nexport interface B { v: string }", {
+        mockName: () => "MockSame",
+      }),
+    ).rejects.toThrow(/more than one type/);
+  });
+});

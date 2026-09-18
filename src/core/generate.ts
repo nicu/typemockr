@@ -8,7 +8,12 @@ import {
   resolveConfig,
 } from "./load";
 import { normalizeProject } from "./normalize";
-import { resolveGenerationRegistry } from "./registry";
+import {
+  composeRegistries,
+  createLegacyRegistry,
+  resolveGenerationRegistry,
+  resolveLegacyMappingProvider,
+} from "./registry";
 import type {
   GenerationRegistry,
   GenerateMocksResult,
@@ -33,7 +38,7 @@ export async function renderMocks(
   const resolvedConfig = isResolvedConfig(config) ? config : resolveConfig(config);
   const project = createProject(resolvedConfig);
   const normalizedProject = normalizeProject(project);
-  const registry = loadRegistry(resolvedConfig.registryFile);
+  const registry = loadRegistry(resolvedConfig);
   const files = emitFiles(normalizedProject, resolvedConfig, registry);
 
   return {
@@ -59,6 +64,7 @@ export async function renderMocksFromSourceText(
     registry: options.registryFilePath,
     projectRootDir,
     format: options.format,
+    mockName: options.mockName,
   });
   const project = createVirtualProject([
     {
@@ -67,7 +73,7 @@ export async function renderMocksFromSourceText(
     },
   ]);
   const normalizedProject = normalizeProject(project);
-  const registry = options.registry ?? loadRegistry(resolvedConfig.registryFile);
+  const registry = options.registry ?? loadRegistry(resolvedConfig);
   const files = emitFiles(normalizedProject, resolvedConfig, registry);
   const renderedFile = files.find((file) => file.sourceFile === sourceFilePath);
 
@@ -97,10 +103,22 @@ function resolveInlinePath(projectRootDir: string, filePath: string): string {
   return filePath.startsWith("/") ? filePath : `${projectRootDir}/${filePath}`;
 }
 
-function loadRegistry(filePath: string | undefined): GenerationRegistry {
-  if (!filePath) {
-    return {};
-  }
+function loadRegistry(config: ResolvedTypemockrConfig): GenerationRegistry {
+  const registry = config.registryFile
+    ? resolveGenerationRegistry(
+        loadModuleFromFile(config.registryFile),
+        `registry ${config.registryFile}`,
+      )
+    : undefined;
+  const mappingProvider = config.mappingProviderFile
+    ? resolveLegacyMappingProvider(
+        loadModuleFromFile(config.mappingProviderFile),
+        `mappingProvider ${config.mappingProviderFile}`,
+      )
+    : undefined;
 
-  return resolveGenerationRegistry(loadModuleFromFile(filePath));
+  return composeRegistries([
+    registry,
+    createLegacyRegistry({ mappingProvider, mappings: config.mappings }),
+  ]);
 }
