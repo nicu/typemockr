@@ -1,0 +1,249 @@
+[
+  {
+    "name": "Slot",
+    "declarationKind": "typeAlias",
+    "type": {
+      "kind": "union",
+      "members": [
+        {
+          "kind": "literal",
+          "value": "primary"
+        },
+        {
+          "kind": "literal",
+          "value": "secondary"
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Wrapper",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "reference",
+            "name": "T",
+            "genericParameter": true,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [
+      {
+        "name": "T"
+      }
+    ],
+    "recursive": false
+  },
+  {
+    "name": "Listing",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "required",
+          "type": {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "primary",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              },
+              {
+                "name": "secondary",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              }
+            ]
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "optional",
+          "type": {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "primary",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              },
+              {
+                "name": "secondary",
+                "type": {
+                  "kind": "scalar",
+                  "scalar": "string"
+                },
+                "optional": false,
+                "readonly": false
+              }
+            ]
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "items",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "label",
+                  "type": {
+                    "kind": "scalar",
+                    "scalar": "string"
+                  },
+                  "optional": false,
+                  "readonly": false
+                }
+              ]
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "optionalItems",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "label",
+                  "type": {
+                    "kind": "scalar",
+                    "scalar": "string"
+                  },
+                  "optional": false,
+                  "readonly": false
+                }
+              ]
+            }
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "groups",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "entries",
+                  "type": {
+                    "kind": "array",
+                    "element": {
+                      "kind": "object",
+                      "properties": [
+                        {
+                          "name": "code",
+                          "type": {
+                            "kind": "scalar",
+                            "scalar": "string"
+                          },
+                          "optional": false,
+                          "readonly": false
+                        }
+                      ]
+                    }
+                  },
+                  "optional": false,
+                  "readonly": false
+                }
+              ]
+            }
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "deep",
+          "type": {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "inner",
+                "type": {
+                  "kind": "object",
+                  "properties": [
+                    {
+                      "name": "note",
+                      "type": {
+                        "kind": "scalar",
+                        "scalar": "string"
+                      },
+                      "optional": false,
+                      "readonly": false
+                    }
+                  ]
+                },
+                "optional": false,
+                "readonly": false
+              }
+            ]
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "wrapped",
+          "type": {
+            "kind": "reference",
+            "name": "Wrapper",
+            "sourceFile": "src/input.ts",
+            "genericParameter": false,
+            "typeArguments": [
+              {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "title",
+                    "type": {
+                      "kind": "scalar",
+                      "scalar": "string"
+                    },
+                    "optional": false,
+                    "readonly": false
+                  }
+                ]
+              }
+            ]
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]

@@ -4,6 +4,7 @@ import { createVirtualProject, normalizeProject } from "../../src/index";
 import { emitFiles } from "../../src/core/emit";
 import type {
   EntityNode,
+  GenerationRegistry,
   ResolvedTypemockrConfig,
   TypemockrOutputFormat,
   VirtualSourceFile,
@@ -34,7 +35,11 @@ export function renderCase(
   const sourceFiles = loadSourceFiles(caseDir);
   const project = normalizeProject(createVirtualProject(sourceFiles));
   const outputRootDir = join(caseDir, "$mock");
-  const files = emitFiles(project, createCaseConfig(caseDir, sourceFiles, outputRootDir, format), {});
+  const files = emitFiles(
+    project,
+    createCaseConfig(caseDir, sourceFiles, outputRootDir, format),
+    loadCaseRegistry(caseDir),
+  );
 
   return Object.fromEntries(
     files.map((file) => [
@@ -72,6 +77,14 @@ export function readExpectedOutputs(
       return [actualPath, readFileSync(expectedPath, "utf8").trim()];
     }),
   );
+}
+
+/** Cases that need registry-provided values drop a `registry.json` next to their `src`. */
+function loadCaseRegistry(caseDir: string): GenerationRegistry {
+  const registryPath = join(caseDir, "registry.json");
+  return existsSync(registryPath)
+    ? (JSON.parse(readFileSync(registryPath, "utf8")) as GenerationRegistry)
+    : {};
 }
 
 function loadSourceFiles(caseDir: string): VirtualSourceFile[] {
