@@ -9,6 +9,7 @@ import type {
   VirtualSourceFile,
   ResolvedTypemockrConfig,
   TypemockrConfig,
+  TypemockrOptionalMode,
 } from "./types";
 
 const CONFIG_FILE_NAMES = [
@@ -17,6 +18,8 @@ const CONFIG_FILE_NAMES = [
   "typemockr.config.cjs",
   "typemockr.json",
 ] as const;
+
+const OPTIONAL_MODES: TypemockrOptionalMode[] = ["maybe", "always", "never"];
 
 const CONFIG_KEYS = [
   "$schema",
@@ -30,6 +33,7 @@ const CONFIG_KEYS = [
   "tsconfig",
   "projectRootDir",
   "format",
+  "optional",
 ] as const;
 
 type RequireExtension = (
@@ -103,6 +107,13 @@ export function resolveConfig(config: TypemockrConfig): ResolvedTypemockrConfig 
     throw new Error('`format` must be "ts" or "js".');
   }
 
+  if (
+    config.optional !== undefined &&
+    !OPTIONAL_MODES.includes(config.optional as TypemockrOptionalMode)
+  ) {
+    throw new Error(`\`optional\` must be one of ${OPTIONAL_MODES.join(", ")}.`);
+  }
+
   for (const key of ["registry", "mappingProvider", "tsconfig"] as const) {
     if (config[key] !== undefined && typeof config[key] !== "string") {
       throw new Error(`\`${key}\` must be a path string.`);
@@ -142,6 +153,7 @@ export function resolveConfig(config: TypemockrConfig): ResolvedTypemockrConfig 
     mockName: config.mockName,
     tsconfigPath: tsconfigCandidate ?? resolveDefaultTsconfig(projectRootDir),
     format: config.format ?? "ts",
+    optional: config.optional ?? "maybe",
   };
 }
 

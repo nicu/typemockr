@@ -443,7 +443,7 @@ function emitObjectLiteralLines(
   context: FileEmitContext,
   indent: number,
 ): string[] {
-  const properties = node.properties.map((property) => {
+  const properties = emittedProperties(node, context).map((property) => {
     const value = emitPropertyValue(entity, property, path, context);
     return `${indentText(indent + 2)}${quote(property.name)}: ${value},`;
   });
@@ -468,7 +468,7 @@ function emitNestedObjectExpression(
   context: FileEmitContext,
   indent: number,
 ): string {
-  const properties = node.properties.map((property) => {
+  const properties = emittedProperties(node, context).map((property) => {
     const value = emitPropertyValue(entity, property, path, context);
     return `${indentText(indent + 2)}${quote(property.name)}: ${value},`;
   });
@@ -502,11 +502,22 @@ function emitPropertyValue(
         context.config.format,
       );
 
-  if (property.optional && direct === undefined) {
+  // `always` treats the property as required; `never` drops it before we get here.
+  if (property.optional && direct === undefined && context.config.optional === "maybe") {
     return `faker.helpers.maybe(() => ${wrapArrowValue(value)})`;
   }
 
   return value;
+}
+
+/** Under `optional: "never"` an optional property is left out of the literal entirely. */
+function emittedProperties(
+  node: ObjectNode,
+  context: FileEmitContext,
+): ObjectNode["properties"] {
+  return context.config.optional === "never"
+    ? node.properties.filter((property) => !property.optional)
+    : node.properties;
 }
 
 function emitValueExpression(

@@ -31,6 +31,7 @@ export type {
   RenderSourceTextOptions,
   ResolvedTypemockrConfig,
   TypemockrConfig,
+  TypemockrOptionalMode,
   TypemockrOutputFormat,
   TypeNode,
   ValueExpressionContext,
