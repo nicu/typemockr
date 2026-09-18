@@ -1,0 +1,73 @@
+[
+  {
+    "name": "Account",
+    "declarationKind": "class",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ],
+      "nominal": true
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Admin",
+    "declarationKind": "class",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "level",
+          "type": {
+            "kind": "scalar",
+            "scalar": "number"
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ],
+      "nominal": true
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Plain",
+    "declarationKind": "class",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]

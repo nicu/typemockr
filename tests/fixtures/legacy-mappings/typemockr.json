@@ -1,0 +1,10 @@
+{
+  "include": ["src/**/*.ts"],
+  "baseDir": ["src"],
+  "outDir": "$mock",
+  "mappingProvider": "./scripts/mappings.js",
+  "mappings": {
+    "faker.number.int({ min: 18, max: 99 })": ["*.age"],
+    "*.nickname": "faker.person.firstName()"
+  }
+}

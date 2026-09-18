@@ -1,6 +1,7 @@
 import {
   Node,
   Project,
+  SyntaxKind,
   Symbol as MorphSymbol,
   Type,
   type ClassDeclaration,
@@ -15,6 +16,7 @@ import type {
   ArrayNode,
   EntityNode,
   EnumNode,
+  EnumSource,
   FileModel,
   GenericParameterNode,
   NormalizedProject,
@@ -80,11 +82,9 @@ export function normalizeProject(project: Project): NormalizedProject {
 function collectEntityDefinitions(project: Project): EntityDefinition[] {
   const definitions: EntityDefinition[] = [];
 
+  // Declaration files are regular input: packages such as generated API models often ship
+  // nothing but `.d.ts` files, and their `export declare ...` statements are supported below.
   for (const sourceFile of project.getSourceFiles()) {
-    if (sourceFile.isDeclarationFile()) {
-      continue;
-    }
-
     for (const statement of sourceFile.getStatements()) {
       if (!isSupportedDeclaration(statement) || !isExported(statement)) {
         continue;
@@ -198,6 +198,11 @@ function normalizeType(
     return { kind: "scalar", scalar: "unknown" };
   }
 
+  const enumMember = getEnumMember(type);
+  if (enumMember) {
+    return normalizeEnumMembers(enumMember.declaration, [enumMember], context);
+  }
+
   if (type.isLiteral()) {
     return normalizeLiteralType(type, anchor);
   }
@@ -219,7 +224,7 @@ function normalizeType(
   }
 
   if (type.isEnum()) {
-    return normalizeEnumType(type, anchor);
+    return normalizeEnumType(type, context, anchor);
   }
 
   if (shouldNormalizeAsObject(type)) {
@@ -258,9 +263,34 @@ function normalizeUnionType(
   currentEntityId: string,
   anchor: Node,
 ): TypeNode {
-  const members = type
-    .getUnionTypes()
-    .map((member) => normalizeType(member, context, currentEntityId, anchor))
+  // TS flattens `MyEnum | undefined` into the enum's member types. Regroup those per enum so
+  // a whole enum becomes a reference to its mock again instead of a list of bare literals,
+  // which a string enum would not accept.
+  const items: Array<Type | EnumDeclaration> = [];
+  const enumGroups = new Map<EnumDeclaration, EnumMemberInfo[]>();
+
+  for (const member of type.getUnionTypes()) {
+    const enumMember = getEnumMember(member);
+    if (!enumMember) {
+      items.push(member);
+      continue;
+    }
+
+    const group = enumGroups.get(enumMember.declaration);
+    if (group) {
+      group.push(enumMember);
+    } else {
+      enumGroups.set(enumMember.declaration, [enumMember]);
+      items.push(enumMember.declaration);
+    }
+  }
+
+  const members = items
+    .map((item) =>
+      item instanceof Type
+        ? normalizeType(item, context, currentEntityId, anchor)
+        : normalizeEnumMembers(item, enumGroups.get(item) ?? [], context),
+    )
     .flatMap((member) =>
       member.kind === "union" ? member.members : [member],
     );
@@ -297,9 +327,15 @@ function normalizeObjectType(
   anchor: Node,
 ): ObjectNode {
   const properties = new Map<string, PropertyNode>();
+  let nominal = false;
 
   for (const symbol of type.getProperties()) {
     const declaration = pickPropertyDeclaration(symbol);
+    if (isNonPublicMember(symbol, declaration)) {
+      nominal = true;
+      continue;
+    }
+
     if (declaration && shouldSkipDeclaration(declaration)) {
       continue;
     }
@@ -331,6 +367,7 @@ function normalizeObjectType(
   return {
     kind: "object",
     properties: [...properties.values()],
+    ...(nominal ? { nominal } : {}),
     indexSignature: stringIndexType
       ? {
           key: "string",
@@ -358,7 +395,17 @@ function normalizeEnumDeclaration(declaration: EnumDeclaration): EnumNode {
   };
 }
 
-function normalizeEnumType(type: Type, anchor: Node): EnumNode {
+function normalizeEnumType(
+  type: Type,
+  context: NormalizeContext,
+  anchor: Node,
+): TypeNode {
+  const members = type.getUnionTypes().map(getEnumMember);
+  const declaration = members[0]?.declaration;
+  if (declaration && members.every((member) => member?.declaration === declaration)) {
+    return normalizeEnumMembers(declaration, members as EnumMemberInfo[], context);
+  }
+
   const values = type
     .getUnionTypes()
     .map((member) => normalizeLiteralType(member, anchor))
@@ -375,6 +422,67 @@ function normalizeEnumType(type: Type, anchor: Node): EnumNode {
   return {
     kind: "enum",
     values,
+  };
+}
+
+interface EnumMemberInfo {
+  declaration: EnumDeclaration;
+  name: string;
+  value: string | number;
+}
+
+function getEnumMember(type: Type): EnumMemberInfo | undefined {
+  if (!type.isEnumLiteral()) {
+    return undefined;
+  }
+
+  const member = type.getSymbol()?.getDeclarations().find(Node.isEnumMember);
+  const declaration = member?.getParent();
+  const value = member?.getValue();
+
+  if (
+    !member ||
+    !declaration ||
+    !Node.isEnumDeclaration(declaration) ||
+    (typeof value !== "string" && typeof value !== "number")
+  ) {
+    return undefined;
+  }
+
+  return { declaration, name: member.getSymbol()?.getName() ?? member.getName(), value };
+}
+
+function normalizeEnumMembers(
+  declaration: EnumDeclaration,
+  members: EnumMemberInfo[],
+  context: NormalizeContext,
+): TypeNode {
+  const name = declaration.getName();
+  const sourceFile = declaration.getSourceFile().getFilePath();
+  const definition = context.definitions.get(createSourceAndNameKey(sourceFile, name));
+  const isWholeEnum = members.length === declaration.getMembers().length;
+
+  if (definition && isWholeEnum) {
+    return {
+      kind: "reference",
+      name: definition.name,
+      sourceFile: definition.sourceFile,
+      genericParameter: false,
+      typeArguments: [],
+    };
+  }
+
+  const source: EnumSource = {
+    name,
+    sourceFile,
+    exported: declaration.isExported(),
+    members: members.map((member) => member.name),
+  };
+
+  return {
+    kind: "enum",
+    values: members.map((member) => member.value),
+    source,
   };
 }
 
@@ -631,11 +739,30 @@ function pickPropertyDeclaration(symbol: MorphSymbol): Node | undefined {
   );
 }
 
-function shouldSkipDeclaration(declaration: Node): boolean {
-  if (Node.isPropertyDeclaration(declaration) && declaration.hasModifier("private")) {
+function isNonPublicMember(symbol: MorphSymbol, declaration: Node | undefined): boolean {
+  if (symbol.getName().startsWith("#")) {
     return true;
   }
 
+  if (!declaration) {
+    return false;
+  }
+
+  if (
+    Node.isPropertyDeclaration(declaration) ||
+    Node.isGetAccessorDeclaration(declaration) ||
+    Node.isSetAccessorDeclaration(declaration) ||
+    Node.isMethodDeclaration(declaration) ||
+    Node.isParameterDeclaration(declaration)
+  ) {
+    return declaration.hasModifier(SyntaxKind.PrivateKeyword) ||
+      declaration.hasModifier(SyntaxKind.ProtectedKeyword);
+  }
+
+  return false;
+}
+
+function shouldSkipDeclaration(declaration: Node): boolean {
   return (
     Node.isMethodDeclaration(declaration) ||
     Node.isMethodSignature(declaration) ||

@@ -1,0 +1,213 @@
+[
+  {
+    "name": "Status",
+    "declarationKind": "enum",
+    "type": {
+      "kind": "enum",
+      "values": [
+        "Active",
+        "Pending",
+        "on-hold"
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Priority",
+    "declarationKind": "enum",
+    "type": {
+      "kind": "enum",
+      "values": [
+        0,
+        1
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Task",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "status",
+          "type": {
+            "kind": "reference",
+            "name": "Status",
+            "sourceFile": "src/status.ts",
+            "genericParameter": false,
+            "typeArguments": []
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "optionalStatus",
+          "type": {
+            "kind": "reference",
+            "name": "Status",
+            "sourceFile": "src/status.ts",
+            "genericParameter": false,
+            "typeArguments": []
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "nullableStatus",
+          "type": {
+            "kind": "union",
+            "members": [
+              {
+                "kind": "scalar",
+                "scalar": "null"
+              },
+              {
+                "kind": "reference",
+                "name": "Status",
+                "sourceFile": "src/status.ts",
+                "genericParameter": false,
+                "typeArguments": []
+              }
+            ]
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "statuses",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "Status",
+              "sourceFile": "src/status.ts",
+              "genericParameter": false,
+              "typeArguments": []
+            }
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "openStatus",
+          "type": {
+            "kind": "enum",
+            "values": [
+              "Active",
+              "Pending"
+            ],
+            "source": {
+              "name": "Status",
+              "sourceFile": "src/status.ts",
+              "exported": true,
+              "members": [
+                "Active",
+                "Pending"
+              ]
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "fixedStatus",
+          "type": {
+            "kind": "enum",
+            "values": [
+              "Active"
+            ],
+            "source": {
+              "name": "Status",
+              "sourceFile": "src/status.ts",
+              "exported": true,
+              "members": [
+                "Active"
+              ]
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "anyNonActive",
+          "type": {
+            "kind": "enum",
+            "values": [
+              "Pending",
+              "on-hold"
+            ],
+            "source": {
+              "name": "Status",
+              "sourceFile": "src/status.ts",
+              "exported": true,
+              "members": [
+                "Pending",
+                "on-hold"
+              ]
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "optionalPriority",
+          "type": {
+            "kind": "reference",
+            "name": "Priority",
+            "sourceFile": "src/status.ts",
+            "genericParameter": false,
+            "typeArguments": []
+          },
+          "optional": true,
+          "readonly": false
+        },
+        {
+          "name": "lowPriority",
+          "type": {
+            "kind": "enum",
+            "values": [
+              0
+            ],
+            "source": {
+              "name": "Priority",
+              "sourceFile": "src/status.ts",
+              "exported": true,
+              "members": [
+                "Low"
+              ]
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "internal",
+          "type": {
+            "kind": "enum",
+            "values": [
+              "a",
+              "b"
+            ],
+            "source": {
+              "name": "Internal",
+              "sourceFile": "src/task.ts",
+              "exported": false,
+              "members": [
+                "A",
+                "B"
+              ]
+            }
+          },
+          "optional": true,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  }
+]
