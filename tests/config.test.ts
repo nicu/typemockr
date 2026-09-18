@@ -70,9 +70,13 @@ describe("config loading", () => {
       "`mappingProvider` must be a path string",
     );
     expect(() => resolveConfig({ ...base, mockName: "Api" })).toThrow('containing "{name}"');
-    expect(() => resolveConfig({ ...base, mappings: [] as unknown as Record<string, string> })).toThrow(
-      "`mappings` must be an object",
+    expect(() => resolveConfig({ ...base, mappings: "x" as unknown as Record<string, string> })).toThrow(
+      "`mappings` must be an object or an array of mapping entries",
     );
+    // The array form is the type-scoped shape, so it must not be rejected as a config value.
+    expect(resolveConfig({ ...base, mappings: [{ path: "*.id", value: "1" }] }).mappings).toEqual([
+      { path: "*.id", value: "1" },
+    ]);
     expect(resolveConfig({ ...base, $schema: "x" } as typeof base).include).toEqual(["a.ts"]);
   });
 });
@@ -144,6 +148,78 @@ describe("mappingProvider and mappings", () => {
       ["string", "Item.list[]"],
       ["boolean", "Item.nested.flag"],
     ]);
+  });
+
+  test("array mappings only apply to entries whose `type` matches the scalar", async () => {
+    const { createLegacyRegistry } = await import("../src/core/registry");
+    const file = await renderMocksFromSourceText(
+      [
+        "export interface Item {",
+        "  cost: number;",
+        "  label: string;",
+        "  itemValue: string;",
+        "  amountValue: number;",
+        "}",
+      ].join("\n"),
+      {
+        registry: createLegacyRegistry({
+          mappings: [
+            // The same `*value` pattern resolves differently per scalar type.
+            { path: "*value", type: "string", value: "faker.commerce.productName()" },
+            { path: "*value", type: "number", value: "faker.number.float()" },
+            { path: "*.cost", type: "string", value: "NEVER_MATCHES" },
+          ],
+        }),
+      },
+    );
+
+    expect(file.code).toContain('"itemValue": (faker.commerce.productName()) as Item["itemValue"],');
+    expect(file.code).toContain('"amountValue": (faker.number.float()) as Item["amountValue"],');
+    // A string-only entry must not claim a number field...
+    expect(file.code).toContain('"cost": faker.number.int(),');
+    // ...and an unmatched field keeps the built-in default for its scalar.
+    expect(file.code).toContain('"label": faker.lorem.words(),');
+  });
+
+  test("a `type` entry with no `path` is a per-type fallback, and `type` accepts a list", async () => {
+    const { createLegacyRegistry } = await import("../src/core/registry");
+    const file = await renderMocksFromSourceText(
+      "export interface Item { createdAt: Date; loose: any; vague: unknown; name: string }",
+      {
+        registry: createLegacyRegistry({
+          mappings: [
+            { path: "*.name", value: "faker.person.fullName()" },
+            { type: "date", value: "faker.date.anytime()" },
+            { type: ["any", "unknown"], value: "faker.lorem.words()" },
+          ],
+        }),
+      },
+    );
+
+    expect(file.code).toContain('"createdAt": (faker.date.anytime()) as Item["createdAt"],');
+    expect(file.code).toContain('"loose": (faker.lorem.words()) as Item["loose"],');
+    expect(file.code).toContain('"vague": (faker.lorem.words()) as Item["vague"],');
+    // An entry with no `type` still matches any scalar, as the object form does.
+    expect(file.code).toContain('"name": (faker.person.fullName()) as Item["name"],');
+  });
+
+  test("rejects malformed array mapping entries and names the index", async () => {
+    const { createLegacyRegistry } = await import("../src/core/registry");
+    const compile = (mappings: unknown) =>
+      createLegacyRegistry({ mappings: mappings as never });
+
+    expect(() => compile([{ path: "*.id" }])).toThrow(
+      "`mappings[0]`.value must be a non-empty expression string",
+    );
+    expect(() => compile([{ value: "x" }, { path: 1, value: "y" }])).toThrow(
+      "`mappings[1]`.path must be a path pattern string",
+    );
+    expect(() => compile([{ type: "datetime", value: "x" }])).toThrow(
+      "`mappings[0]`.type must be one or more of string, number, bigint, boolean, date, any, unknown",
+    );
+    expect(() => compile(["*.id"])).toThrow(
+      "`mappings[0]` must be an object with a `value` expression",
+    );
   });
 
   test("fails loudly when the provider file is missing or exports no function", async () => {

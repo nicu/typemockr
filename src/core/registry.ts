@@ -2,6 +2,7 @@ import type {
   GenerationRegistry,
   LegacyMappingProvider,
   LegacyMappings,
+  MappingEntry,
   ScalarKind,
   ValueExpressionContext,
 } from "./types";
@@ -85,11 +86,12 @@ export function createLegacyRegistry(options: {
 
   return {
     provideValue(context) {
-      if (context.kind !== "scalar" || !context.scalar || !LEGACY_SCALARS.has(context.scalar)) {
+      const scalar = context.scalar;
+      if (context.kind !== "scalar" || !scalar || !LEGACY_SCALARS.has(scalar)) {
         return undefined;
       }
 
-      const provided = provider?.(context.scalar, context.path, {
+      const provided = provider?.(scalar, context.path, {
         sourceFile: context.sourceFile,
         entityName: context.entityName,
       });
@@ -97,7 +99,9 @@ export function createLegacyRegistry(options: {
         return provided;
       }
 
-      return matchers.find(([pattern]) => pattern.test(context.path))?.[1];
+      return matchers.find((matcher) =>
+        matchesLegacyMapping(matcher, scalar, context.path),
+      )?.value;
     },
   };
 }
@@ -140,17 +144,87 @@ export function composeRegistries(
   };
 }
 
-function compileLegacyMappings(mappings: LegacyMappings): Array<[RegExp, string]> {
-  const matchers: Array<[RegExp, string]> = [];
+interface LegacyMatcher {
+  /** Undefined when the entry has no `path`, i.e. it matches every path. */
+  pattern?: RegExp;
+  /** Undefined when the entry has no `type`, i.e. it matches every scalar. */
+  types?: ScalarKind[];
+  value: string;
+}
+
+function matchesLegacyMapping(
+  matcher: LegacyMatcher,
+  scalar: ScalarKind,
+  path: string,
+): boolean {
+  if (matcher.types && !matcher.types.includes(scalar)) {
+    return false;
+  }
+
+  return matcher.pattern === undefined || matcher.pattern.test(path);
+}
+
+function compileLegacyMappings(mappings: LegacyMappings): LegacyMatcher[] {
+  return Array.isArray(mappings)
+    ? mappings.map((entry, index) => compileMappingEntry(entry, index))
+    : compileLegacyMappingObject(mappings);
+}
+
+function compileMappingEntry(entry: MappingEntry, index: number): LegacyMatcher {
+  const at = `\`mappings[${index}]\``;
+
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    throw new Error(`${at} must be an object with a \`value\` expression.`);
+  }
+
+  if (typeof entry.value !== "string" || entry.value.length === 0) {
+    throw new Error(`${at}.value must be a non-empty expression string.`);
+  }
+
+  if (entry.path !== undefined && typeof entry.path !== "string") {
+    throw new Error(`${at}.path must be a path pattern string.`);
+  }
+
+  return {
+    pattern: entry.path === undefined ? undefined : legacyPatternToRegExp(entry.path),
+    types: compileMappingEntryTypes(entry.type, at),
+    value: entry.value,
+  };
+}
+
+function compileMappingEntryTypes(
+  type: MappingEntry["type"],
+  at: string,
+): ScalarKind[] | undefined {
+  if (type === undefined) {
+    return undefined;
+  }
+
+  const types = Array.isArray(type) ? type : [type];
+  const unknownType = types.find((candidate) => !LEGACY_SCALARS.has(candidate));
+
+  if (unknownType !== undefined || types.length === 0) {
+    throw new Error(
+      `${at}.type must be one or more of ${[...LEGACY_SCALARS].join(", ")}.`,
+    );
+  }
+
+  return types;
+}
+
+function compileLegacyMappingObject(
+  mappings: Record<string, string | string[]>,
+): LegacyMatcher[] {
+  const matchers: LegacyMatcher[] = [];
 
   for (const [key, value] of Object.entries(mappings)) {
     if (typeof value === "string") {
       // { pattern: expression }
-      matchers.push([legacyPatternToRegExp(key), value]);
+      matchers.push({ pattern: legacyPatternToRegExp(key), value });
     } else if (Array.isArray(value)) {
       // { expression: [patterns] }
       for (const pattern of value) {
-        matchers.push([legacyPatternToRegExp(pattern), key]);
+        matchers.push({ pattern: legacyPatternToRegExp(pattern), value: key });
       }
     } else {
       throw new Error(

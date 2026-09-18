@@ -148,8 +148,23 @@ export type LegacyMappingProvider = (
   context?: { sourceFile?: string; entityName?: string },
 ) => string | undefined | null;
 
-/** Legacy inline mappings: `{ pattern: expression }` or `{ expression: [patterns] }`. */
-export type LegacyMappings = Record<string, string | string[]>;
+/**
+ * One entry of the ordered `mappings` array. `path` is a `*`-wildcard glob matched against the
+ * value path (`Entity.prop`), `type` restricts the entry to those scalar kinds. Omitting `path`
+ * matches every path, so `{ type, value }` alone is a per-type fallback; omitting `type` matches
+ * every scalar, so `{ path, value }` alone behaves like the object form.
+ */
+export interface MappingEntry {
+  path?: string;
+  type?: ScalarKind | ScalarKind[];
+  value: string;
+}
+
+/**
+ * Inline mappings, either as an ordered array of {@link MappingEntry} (first match wins), or in
+ * the legacy object form: `{ pattern: expression }` or `{ expression: [patterns] }`.
+ */
+export type LegacyMappings = Record<string, string | string[]> | MappingEntry[];
 
 export interface TypemockrConfig {
   include: string[];

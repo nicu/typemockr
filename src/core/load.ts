@@ -111,11 +111,9 @@ export function resolveConfig(config: TypemockrConfig): ResolvedTypemockrConfig 
 
   if (
     config.mappings !== undefined &&
-    (!config.mappings ||
-      typeof config.mappings !== "object" ||
-      Array.isArray(config.mappings))
+    (!config.mappings || typeof config.mappings !== "object")
   ) {
-    throw new Error("`mappings` must be an object.");
+    throw new Error("`mappings` must be an object or an array of mapping entries.");
   }
 
   if (
