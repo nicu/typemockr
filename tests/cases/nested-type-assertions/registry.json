@@ -1,0 +1,11 @@
+{
+  "values": {
+    "Listing.required.primary": "faker.lorem.words()",
+    "Listing.optional.primary": "faker.lorem.words()",
+    "Listing.items[].label": "faker.lorem.words()",
+    "Listing.optionalItems[].label": "faker.lorem.words()",
+    "Listing.groups[].entries[].code": "faker.lorem.words()",
+    "Listing.deep.inner.note": "faker.lorem.words()",
+    "Listing.wrapped<T>.title": "faker.lorem.words()"
+  }
+}

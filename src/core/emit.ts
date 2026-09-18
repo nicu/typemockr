@@ -605,7 +605,9 @@ function emitRecursiveArrayCutoff(
     return "[]";
   }
 
-  return `([] as NonNullable<${emitPathTypeAccess(entity, path)}>)`;
+  const access = emitPathTypeAccess(entity, path);
+
+  return access === undefined ? "[]" : `([] as NonNullable<${access}>)`;
 }
 
 function emitReferenceExpression(
@@ -868,18 +870,43 @@ function getEntityTypeReference(entity: EntityNode): string {
   return `${entity.name}<${entity.generics.map((generic) => generic.name).join(", ")}>`;
 }
 
-function emitPropertyTypeAccess(entity: EntityNode, segments: string[]): string {
-  return `${getEntityTypeReference(entity)}${segments.map((segment) => `[${quote(segment)}]`).join("")}`;
+/**
+ * Builds the indexed access that names the type at `segments`, e.g. `Foo["items"]`.
+ *
+ * Every step but the first indexes into whatever the previous one produced, and that may be
+ * optional (`prop?:`) or an array we still have to unwrap, so each target is wrapped in
+ * `NonNullable<>` before being indexed. The wrapper is a no-op on a type that is not nullable, so
+ * the required case keeps the same meaning. The entity itself is never nullable, so the first
+ * index stays bare.
+ *
+ * Returns `undefined` when no sound access exists — a generic type argument (`box<T>`) is reached
+ * through the target's own generic parameter, not by indexing the entity.
+ */
+function emitPropertyTypeAccess(entity: EntityNode, segments: string[]): string | undefined {
+  let access = getEntityTypeReference(entity);
+  let nullable = false;
+
+  for (const segment of segments) {
+    if (segment.includes("<")) {
+      return undefined;
+    }
+
+    const name = segment.replace(/(?:\[\])*$/, "");
+    const arrayDepth = (segment.length - name.length) / 2;
+
+    access = `${nullable ? `NonNullable<${access}>` : access}[${quote(name)}]`;
+    for (let depth = 0; depth < arrayDepth; depth += 1) {
+      access = `NonNullable<${access}>[number]`;
+    }
+
+    nullable = true;
+  }
+
+  return access;
 }
 
-function emitPathTypeAccess(entity: EntityNode, path: string): string {
-  return emitPropertyTypeAccess(
-    entity,
-    path
-      .split(".")
-      .slice(1)
-      .map((segment) => segment.replace(/\[\]$/g, "").replace(/<.*$/, "")),
-  );
+function emitPathTypeAccess(entity: EntityNode, path: string): string | undefined {
+  return emitPropertyTypeAccess(entity, path.split(".").slice(1));
 }
 
 function applyPropertyTypeAssertion(
@@ -892,7 +919,9 @@ function applyPropertyTypeAssertion(
     return value;
   }
 
-  return `(${value}) as ${emitPropertyTypeAccess(entity, segments)}`;
+  const access = emitPropertyTypeAccess(entity, segments);
+
+  return access === undefined ? value : `(${value}) as ${access}`;
 }
 
 function getJsDocEntityTypeReference(entity: EntityNode, outputFile: string): string {
