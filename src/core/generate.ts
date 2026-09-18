@@ -65,6 +65,8 @@ export async function renderMocksFromSourceText(
     projectRootDir,
     format: options.format,
     optional: options.optional,
+    maxDepth: options.maxDepth,
+    arrayCount: options.arrayCount,
     mockName: options.mockName,
   });
   const project = createVirtualProject([

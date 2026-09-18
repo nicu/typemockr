@@ -1,0 +1,75 @@
+[
+  {
+    "name": "Leaf",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "scalar": "string"
+          },
+          "optional": false,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Branch",
+    "declarationKind": "interface",
+    "type": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "leaves",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "Leaf",
+              "sourceFile": "src/input.ts",
+              "genericParameter": false,
+              "typeArguments": []
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "labels",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          },
+          "optional": false,
+          "readonly": false
+        },
+        {
+          "name": "children",
+          "type": {
+            "kind": "array",
+            "element": {
+              "kind": "reference",
+              "name": "Branch",
+              "sourceFile": "src/input.ts",
+              "genericParameter": false,
+              "typeArguments": []
+            }
+          },
+          "optional": true,
+          "readonly": false
+        }
+      ]
+    },
+    "generics": [],
+    "recursive": true
+  }
+]

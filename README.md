@@ -18,6 +18,8 @@ Without an argument, the CLI looks for `typemockr.config.ts`, `typemockr.config.
 | `baseDir` | Directories stripped from source paths when computing output paths. |
 | `format` | `"ts"` (default) or `"js"` (with JSDoc types). |
 | `optional` | How `prop?:` is generated: `"maybe"` (default), `"always"` or `"never"` (see [Optional properties](#optional-properties)). |
+| `maxDepth` | Recursion cut-off for self-referencing types. Defaults to `2`. |
+| `arrayCount` | Elements per generated array: a number or `{ min, max }`. Defaults to faker's own default of 3 (see [Mock size](#mock-size)). |
 | `tsconfig` | tsconfig used to resolve types. Defaults to `./tsconfig.json` if present. |
 | `registry` | Module exporting custom values (see [Registry](#registry)). |
 | `mappingProvider` | Module exporting a 0.1.x-style `mappingProvider(type, path, context)` function (see [Legacy mappings](#legacy-mappings)). |
@@ -72,6 +74,42 @@ export default {
 ```
 
 Paths look like `Entity.prop`, `Entity.prop.nested`, and `Entity.list[]` for array elements. In TS output, registry values are asserted to the property type, so an expression of the wrong type fails `tsc`.
+
+### Mock size
+
+Two settings bound how large a generated mock gets.
+
+`maxDepth` is the cut-off for types that reference themselves. Recursive builders take a second
+argument, so it is also overridable per call:
+
+```ts
+MockTree({}, { maxDepth: 5 });
+```
+
+`arrayCount` is usually the bigger lever. Every array is emitted as `faker.helpers.multiple`, and
+with no `count` faker produces 3 elements at every level — which compounds, so an array of 3 whose
+element holds an array of 3 is 9, and so on down. Deep response types reach tens of thousands of
+nodes this way without recursing at all:
+
+```json
+{ "arrayCount": { "min": 1, "max": 2 } }
+```
+
+```ts
+"labels": faker.helpers.multiple(() => faker.lorem.words(), { count: { min: 1, max: 2 } }),
+```
+
+A number fixes the length exactly; `{ min, max }` keeps some variety. For a single path, set the
+whole array through `registry.values` instead — that wins over the generated expression:
+
+```js
+values: { "Branch.leaves": "[MockLeaf()]" }
+```
+
+Note that depth is only bounded for recursive types. A non-recursive graph is as deep as the types
+are, and there is deliberately no cut-off for it: stopping partway would mean inventing a value for
+a required property, which produces a mock that type-checks but is not a real value of its type.
+Bounding `arrayCount` is the effective control, since breadth rather than depth is what compounds.
 
 ### Optional properties
 

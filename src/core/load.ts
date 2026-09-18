@@ -8,6 +8,7 @@ import ts from "typescript";
 import type {
   VirtualSourceFile,
   ResolvedTypemockrConfig,
+  TypemockrArrayCount,
   TypemockrConfig,
   TypemockrOptionalMode,
 } from "./types";
@@ -34,6 +35,8 @@ const CONFIG_KEYS = [
   "projectRootDir",
   "format",
   "optional",
+  "maxDepth",
+  "arrayCount",
 ] as const;
 
 type RequireExtension = (
@@ -128,6 +131,15 @@ export function resolveConfig(config: TypemockrConfig): ResolvedTypemockrConfig 
   }
 
   if (
+    config.maxDepth !== undefined &&
+    (!Number.isInteger(config.maxDepth) || config.maxDepth < 0)
+  ) {
+    throw new Error("`maxDepth` must be a non-negative integer.");
+  }
+
+  assertArrayCount(config.arrayCount);
+
+  if (
     config.mockName !== undefined &&
     typeof config.mockName !== "function" &&
     (typeof config.mockName !== "string" || !config.mockName.includes("{name}"))
@@ -154,7 +166,35 @@ export function resolveConfig(config: TypemockrConfig): ResolvedTypemockrConfig 
     tsconfigPath: tsconfigCandidate ?? resolveDefaultTsconfig(projectRootDir),
     format: config.format ?? "ts",
     optional: config.optional ?? "maybe",
+    maxDepth: config.maxDepth ?? 2,
+    arrayCount: config.arrayCount,
   };
+}
+
+function assertArrayCount(count: TypemockrArrayCount | undefined): void {
+  if (count === undefined) {
+    return;
+  }
+
+  const isLength = (value: unknown) => Number.isInteger(value) && (value as number) >= 0;
+
+  if (isLength(count)) {
+    return;
+  }
+
+  if (
+    count &&
+    typeof count === "object" &&
+    isLength((count as { min: unknown }).min) &&
+    isLength((count as { max: unknown }).max) &&
+    (count as { min: number }).min <= (count as { max: number }).max
+  ) {
+    return;
+  }
+
+  throw new Error(
+    "`arrayCount` must be a non-negative integer or `{ min, max }` with min <= max.",
+  );
 }
 
 function assertKnownKeys(config: TypemockrConfig) {
