@@ -14,6 +14,13 @@ export type TypemockrOutputFormat = "ts" | "js";
  */
 export type TypemockrOptionalMode = "maybe" | "always" | "never";
 
+/**
+ * How many elements a generated array gets, as `faker.helpers.multiple`'s `count`. A number is an
+ * exact length; `{ min, max }` picks per array. Left unset, faker's own default (3) applies at
+ * every level, which compounds through nested arrays.
+ */
+export type TypemockrArrayCount = number | { min: number; max: number };
+
 export type ScalarKind =
   | "string"
   | "number"
@@ -192,6 +199,9 @@ export interface TypemockrConfig {
   projectRootDir?: string;
   format?: TypemockrOutputFormat;
   optional?: TypemockrOptionalMode;
+  /** Cut-off for self-referencing types. Defaults to 2. */
+  maxDepth?: number;
+  arrayCount?: TypemockrArrayCount;
 }
 
 export interface ResolvedTypemockrConfig {
@@ -207,6 +217,8 @@ export interface ResolvedTypemockrConfig {
   configFile?: string;
   format: TypemockrOutputFormat;
   optional: TypemockrOptionalMode;
+  maxDepth: number;
+  arrayCount?: TypemockrArrayCount;
 }
 
 export interface GeneratedFile {
@@ -231,6 +243,8 @@ export interface RenderSourceTextOptions {
   registry?: GenerationRegistry;
   format?: TypemockrOutputFormat;
   optional?: TypemockrOptionalMode;
+  maxDepth?: number;
+  arrayCount?: TypemockrArrayCount;
   mockName?: MockNameOption;
 }
 

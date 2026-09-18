@@ -1,0 +1,5 @@
+{
+  "arrayCount": { "min": 1, "max": 2 },
+  "maxDepth": 1,
+  "optional": "always"
+}

@@ -30,6 +30,7 @@ export type {
   PropertyNode,
   RenderSourceTextOptions,
   ResolvedTypemockrConfig,
+  TypemockrArrayCount,
   TypemockrConfig,
   TypemockrOptionalMode,
   TypemockrOutputFormat,

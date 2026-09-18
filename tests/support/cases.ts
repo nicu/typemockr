@@ -6,6 +6,7 @@ import type {
   EntityNode,
   GenerationRegistry,
   ResolvedTypemockrConfig,
+  TypemockrArrayCount,
   TypemockrOptionalMode,
   TypemockrOutputFormat,
   VirtualSourceFile,
@@ -81,10 +82,16 @@ export function readExpectedOutputs(
 }
 
 /** Cases that need non-default emit options drop a `config.json` next to their `src`. */
-function loadCaseConfig(caseDir: string): { optional?: TypemockrOptionalMode } {
+type CaseConfig = {
+  optional?: TypemockrOptionalMode;
+  maxDepth?: number;
+  arrayCount?: TypemockrArrayCount;
+};
+
+function loadCaseConfig(caseDir: string): CaseConfig {
   const configPath = join(caseDir, "config.json");
   return existsSync(configPath)
-    ? (JSON.parse(readFileSync(configPath, "utf8")) as { optional?: TypemockrOptionalMode })
+    ? (JSON.parse(readFileSync(configPath, "utf8")) as CaseConfig)
     : {};
 }
 
@@ -121,6 +128,8 @@ function createCaseConfig(
   outputRootDir: string,
   format: TypemockrOutputFormat,
 ): ResolvedTypemockrConfig {
+  const caseConfig = loadCaseConfig(caseDir);
+
   return {
     projectRootDir: caseDir,
     include: sourceFiles.map((sourceFile) => sourceFile.filePath),
@@ -130,7 +139,9 @@ function createCaseConfig(
     registryFile: undefined,
     tsconfigPath: undefined,
     configFile: undefined,
-    optional: loadCaseConfig(caseDir).optional ?? "maybe",
+    optional: caseConfig.optional ?? "maybe",
+    maxDepth: caseConfig.maxDepth ?? 2,
+    arrayCount: caseConfig.arrayCount,
   };
 }
 

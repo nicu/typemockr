@@ -12,6 +12,7 @@ import type {
   ReferenceNode,
   ResolvedTypemockrConfig,
   TypeNode,
+  TypemockrArrayCount,
   TypemockrOutputFormat,
 } from "./types";
 
@@ -372,7 +373,7 @@ function emitEntityBody(
 
   if (entity.recursive) {
     return [
-      "  const { depth = 0, maxDepth = 2 } = __options;",
+      `  const { depth = 0, maxDepth = ${context.config.maxDepth} } = __options;`,
       "",
       ...emitEntityBodyAfterOptions(entity, context, ruleLines),
     ];
@@ -593,7 +594,7 @@ function emitArrayExpression(
   context: FileEmitContext,
 ): string {
   const value = emitValueExpression(entity, element, `${path}[]`, context);
-  const arrayExpression = `faker.helpers.multiple(() => ${wrapArrowValue(value)})`;
+  const arrayExpression = `faker.helpers.multiple(() => ${wrapArrowValue(value)}${emitArrayCountArgument(context.config.arrayCount)})`;
 
   if (
     entity.recursive &&
@@ -605,6 +606,20 @@ function emitArrayExpression(
   }
 
   return arrayExpression;
+}
+
+/**
+ * faker defaults to 3 elements, which compounds through nested arrays, so `arrayCount` is how a
+ * project keeps deep response types legible. Left unset we emit no argument and keep faker's default.
+ */
+function emitArrayCountArgument(count: TypemockrArrayCount | undefined): string {
+  if (count === undefined) {
+    return "";
+  }
+
+  return typeof count === "number"
+    ? `, { count: ${count} }`
+    : `, { count: { min: ${count.min}, max: ${count.max} } }`;
 }
 
 function emitRecursiveArrayCutoff(

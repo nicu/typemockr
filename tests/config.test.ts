@@ -74,6 +74,19 @@ describe("config loading", () => {
       "`optional` must be one of maybe, always, never",
     );
     expect(resolveConfig({ ...base }).optional).toBe("maybe");
+    expect(() => resolveConfig({ ...base, maxDepth: 1.5 })).toThrow(
+      "`maxDepth` must be a non-negative integer",
+    );
+    expect(() => resolveConfig({ ...base, maxDepth: -1 })).toThrow("`maxDepth`");
+    expect(resolveConfig({ ...base }).maxDepth).toBe(2);
+    expect(() => resolveConfig({ ...base, arrayCount: 0.5 })).toThrow(
+      "`arrayCount` must be a non-negative integer or `{ min, max }` with min <= max",
+    );
+    expect(() => resolveConfig({ ...base, arrayCount: { min: 3, max: 1 } })).toThrow("`arrayCount`");
+    expect(resolveConfig({ ...base, arrayCount: { min: 1, max: 2 } }).arrayCount).toEqual({
+      min: 1,
+      max: 2,
+    });
     expect(() => resolveConfig({ ...base, mappings: "x" as unknown as Record<string, string> })).toThrow(
       "`mappings` must be an object or an array of mapping entries",
     );
@@ -136,6 +149,39 @@ describe("optional properties", () => {
     const alwaysFile = await renderMocksFromSourceText(src, { registry, optional: "always" });
     expect(alwaysFile.code).toContain('"reference": (faker.string.uuid()) as Booking["reference"],');
     expect(alwaysFile.code).toContain('"email": faker.lorem.words(),');
+  });
+});
+
+describe("maxDepth and arrayCount", () => {
+  const src = "export interface Node { name: string; children?: Node[]; tags: string[] }";
+
+  test("maxDepth replaces the hardcoded recursion cut-off, and defaults to 2", async () => {
+    expect((await renderMocksFromSourceText(src)).code).toContain("maxDepth = 2");
+    expect((await renderMocksFromSourceText(src, { maxDepth: 5 })).code).toContain("maxDepth = 5");
+    // The cut-off itself is unchanged; only the default moves.
+    expect((await renderMocksFromSourceText(src, { maxDepth: 0 })).code).toContain(
+      "depth >= maxDepth ? ([] as NonNullable<Node[\"children\"]>)",
+    );
+  });
+
+  test("arrayCount is left off by default, so faker's own default applies", async () => {
+    const file = await renderMocksFromSourceText(src);
+
+    expect(file.code).toContain('"tags": faker.helpers.multiple(() => faker.lorem.words()),');
+    expect(file.code).not.toContain("count:");
+  });
+
+  test("arrayCount reaches every generated array, including the recursive one", async () => {
+    const exact = await renderMocksFromSourceText(src, { arrayCount: 1, optional: "always" });
+    expect(exact.code).toContain(
+      '"tags": faker.helpers.multiple(() => faker.lorem.words(), { count: 1 }),',
+    );
+    expect(exact.code).toContain("{ depth: depth + 1, maxDepth }), { count: 1 })");
+
+    const ranged = await renderMocksFromSourceText(src, { arrayCount: { min: 1, max: 2 } });
+    expect(ranged.code).toContain(
+      '"tags": faker.helpers.multiple(() => faker.lorem.words(), { count: { min: 1, max: 2 } }),',
+    );
   });
 });
 
