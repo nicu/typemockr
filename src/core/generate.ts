@@ -8,6 +8,8 @@ import {
   resolveConfig,
 } from "./load";
 import { normalizeProject } from "./normalize";
+import { createDriftRecorder, formatMappingMismatches } from "./report";
+import type { DriftRecorder } from "./report";
 import {
   composeRegistries,
   createLegacyRegistry,
@@ -15,6 +17,7 @@ import {
   resolveLegacyMappingProvider,
 } from "./registry";
 import type {
+  DriftReport,
   GenerationRegistry,
   GenerateMocksResult,
   GeneratedFile,
@@ -38,14 +41,29 @@ export async function renderMocks(
   const resolvedConfig = isResolvedConfig(config) ? config : resolveConfig(config);
   const project = createProject(resolvedConfig);
   const normalizedProject = normalizeProject(project);
-  const registry = loadRegistry(resolvedConfig);
-  const files = emitFiles(normalizedProject, resolvedConfig, registry);
+  const recorder = createDriftRecorder();
+  const registry = loadRegistry(resolvedConfig, recorder);
+  const files = emitFiles(normalizedProject, resolvedConfig, registry, recorder);
+  const report = recorder.build();
+
+  assertNoMappingMismatches(report);
 
   return {
     config: resolvedConfig,
     project: normalizedProject,
     files,
+    report,
   };
+}
+
+/**
+ * A generator that produces the wrong type is a bug in the mappings, not a question — the mocks
+ * would not typecheck (or worse, would typecheck through an assertion and lie), so generation stops.
+ */
+function assertNoMappingMismatches(report: DriftReport): void {
+  if (report.mismatches.length > 0) {
+    throw new Error(formatMappingMismatches(report));
+  }
 }
 
 export async function renderMocksFromSourceText(
@@ -106,7 +124,10 @@ function resolveInlinePath(projectRootDir: string, filePath: string): string {
   return filePath.startsWith("/") ? filePath : `${projectRootDir}/${filePath}`;
 }
 
-function loadRegistry(config: ResolvedTypemockrConfig): GenerationRegistry {
+function loadRegistry(
+  config: ResolvedTypemockrConfig,
+  recorder?: DriftRecorder,
+): GenerationRegistry {
   const registry = config.registryFile
     ? resolveGenerationRegistry(
         loadModuleFromFile(config.registryFile),
@@ -122,6 +143,6 @@ function loadRegistry(config: ResolvedTypemockrConfig): GenerationRegistry {
 
   return composeRegistries([
     registry,
-    createLegacyRegistry({ mappingProvider, mappings: config.mappings }),
+    createLegacyRegistry({ mappingProvider, mappings: config.mappings, recorder }),
   ]);
 }

@@ -1,0 +1,32 @@
+{
+  "include": [
+    "src/**/*.ts"
+  ],
+  "baseDir": [
+    "src"
+  ],
+  "outDir": "$mock",
+  "mappings": [
+    {
+      "source": "Ai/*",
+      "path": "*.$type",
+      "type": "string",
+      "value": "\"Acme.Api.Models.AI.{typeName}\""
+    },
+    {
+      "path": "*.$type",
+      "type": "string",
+      "value": "\"Acme.Api.Models.{sourceNamespace}\""
+    },
+    {
+      "type": "date",
+      "value": "faker.date.anytime().toISOString()",
+      "cast": "unknown"
+    },
+    {
+      "path": "*.neverPresent",
+      "type": "string",
+      "value": "faker.lorem.word()"
+    }
+  ]
+}

@@ -166,7 +166,7 @@ The 0.1.x options still work. They are applied after `registry`.
 - `mappingProvider`: path to a module exporting `mappingProvider` (named or default). It is called as `mappingProvider(type, path, { sourceFile, entityName })` for scalar values only. `type` is one of `string`, `number`, `bigint`, `boolean`, `date`, `any` or `unknown`. The first non-empty string returned wins.
 - `mappings`: either `{ "*.id": "faker.string.uuid()" }` or `{ "faker.string.uuid()": ["*.id"] }`. `*` is a wildcard, and matching ignores case.
 
-Because TS output is type-checked, a mapping that returns the wrong type fails `tsc` — `faker.string.uuid()` on a numeric `id` is an error, not a bad value.
+Because TS output is type-checked, a mapping that returns the wrong type fails `tsc` — `faker.string.uuid()` on a numeric `id` is an error, not a bad value. The [drift report](#drift-report) catches the common cases before `tsc` does.
 
 ### Type-scoped mappings
 
@@ -192,9 +192,96 @@ mappings: [
 
 - `path` is the same `*` glob as the object form, matched case-insensitively. Omit it to match every path.
 - `type` is a scalar kind or a list of them (`string`, `number`, `bigint`, `boolean`, `date`, `any`, `unknown`). Omit it to match every scalar, as the object form does.
+- `source` is a `*` glob over the declaring file's path relative to `baseDir`, without the extension (`Store/Order/PaymentPlan`). Omit it to match every file.
 - The first matching entry wins, in array order — unlike the object form, which depends on key order.
 
 You rarely need a catch-all entry. A path with no matching mapping falls through to the built-in
 default for its scalar type (`faker.lorem.words()` for `string`, `faker.number.int()` for `number`,
 `faker.datatype.boolean()` for `boolean`, and so on), which is already type-correct. A `{ path: "*" }`
 entry suppresses those defaults for every type at once, which is almost never what you want.
+
+### Values derived from the declaration
+
+A `value` may use these tokens, all taken from the file the type is declared in:
+
+| Token | For `src/Store/Order/PaymentPlan.ts` under `baseDir: ["src"]` |
+| --- | --- |
+| `{typeName}` | `PaymentPlan` |
+| `{sourceDir}` | `Store/Order` (empty at the root of `baseDir`) |
+| `{sourcePath}` | `Store/Order/PaymentPlan` |
+| `{sourceNamespace}` | `Store.Order.PaymentPlan` |
+
+This is how a discriminator is generated without listing every type. Models emitted from a backend
+schema usually mirror the server namespace in their folder layout, so one entry covers all of them,
+and `source` handles the folders that do not:
+
+```js
+mappings: [
+  // `lib/Ai/*` is the `AI` namespace on the wire. Scoped entries go before the general one.
+  { source: "Ai/*", path: "*.$type", type: "string", value: '"Acme.Api.Models.AI.{typeName}"' },
+  { path: "*.$type", type: "string", value: '"Acme.Api.Models.{sourceNamespace}"' },
+]
+```
+
+Any `$type` no entry matches falls through to `faker.lorem.words()` and is listed in the [drift
+report](#drift-report), so a namespace the derivation does not cover is visible rather than silently
+wrong.
+
+### Values that deviate from the declared type
+
+A response deserialized from JSON does not hold the types the models declare: a `Date` field is an
+ISO string on the wire, and a fixture that mirrors the wire should say so. Set `cast: "unknown"` on
+the entry to assert through `unknown`, which is the only assertion TypeScript allows between
+unrelated types:
+
+```js
+mappings: [
+  { type: "date", value: "faker.date.anytime().toISOString()", cast: "unknown" },
+]
+```
+
+```ts
+"recordedOn": (faker.date.anytime().toISOString()) as unknown as Trailer["recordedOn"],
+```
+
+One entry covers every `Date`-typed position, including the elements of a `Date[]`. Without `cast`,
+the assertion stays direct (`as Trailer["recordedOn"]`) and `tsc` rejects the mismatch — which is the
+right outcome for an expression that was meant to fit the declaration.
+
+### Drift report
+
+Every generation run reports on its own mappings, because mocks are regenerated whenever the models
+change and that is the moment the mappings can be checked against them.
+
+A **type/generator mismatch** fails the run: an entry whose expression produces a kind the field does
+not declare — `faker.lorem.words()` landing on a `number` — is a bug in the mappings, and the mocks
+would either not compile or compile through an assertion and lie.
+
+```
+1 mapping generates a value of the wrong type:
+  PaymentPlan.balance is `number` but `faker.lorem.words()` generates `string` (src/Store/Order/PaymentPlan.ts)
+Fix the mapping, or add `"cast": "unknown"` to it when the deviation is deliberate.
+```
+
+The kind is measured, not guessed: the expression is evaluated against faker, because nothing about
+`faker.location.latitude()` (a number) or `faker.date.month()` (a string) says so from the outside.
+An expression that throws — a reference to a generated mock, say — is left alone rather than failing
+a build on a guess.
+
+The rest is advisory, printed after the run:
+
+```
+typemockr drift report:
+  3 `string` fields fell through to the type default:
+    ErrorInfo.message
+    SearchRequest.query
+    Trailer.url
+  1 mapping entries matched nothing:
+    mappings[3] path "*.neverPresent" type "string" -> faker.lorem.word()
+```
+
+- **Fell through to the type default**, grouped by type — new fields that may want a mapping.
+- **Matched nothing** — entries left behind by a field that was renamed or removed.
+
+`generateMocks()` and `renderMocks()` return the same data as `result.report`
+(`{ mismatches, defaults, deadMappings }`) for projects that want to act on it themselves.

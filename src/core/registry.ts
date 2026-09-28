@@ -1,8 +1,10 @@
+import type { DriftRecorder } from "./report";
 import type {
   GenerationRegistry,
   LegacyMappingProvider,
   LegacyMappings,
   MappingEntry,
+  ProvidedValue,
   ScalarKind,
   ValueExpressionContext,
 } from "./types";
@@ -76,9 +78,12 @@ const LEGACY_SCALARS = new Set<ScalarKind>([
 export function createLegacyRegistry(options: {
   mappingProvider?: LegacyMappingProvider;
   mappings?: LegacyMappings;
+  recorder?: DriftRecorder;
 }): GenerationRegistry | undefined {
   const matchers = options.mappings ? compileLegacyMappings(options.mappings) : [];
   const provider = options.mappingProvider;
+
+  options.recorder?.registerMappings(matchers.map((matcher) => matcher.entry));
 
   if (!provider && matchers.length === 0) {
     return undefined;
@@ -99,11 +104,44 @@ export function createLegacyRegistry(options: {
         return provided;
       }
 
-      return matchers.find((matcher) =>
-        matchesLegacyMapping(matcher, scalar, context.path),
-      )?.value;
+      const index = matchers.findIndex((matcher) =>
+        matchesLegacyMapping(matcher, scalar, context),
+      );
+      const matcher = matchers[index];
+      if (!matcher) {
+        return undefined;
+      }
+
+      options.recorder?.mappingMatched(index);
+
+      return {
+        value: interpolateMappingValue(matcher.value, context),
+        cast: matcher.cast,
+      } satisfies ProvidedValue;
     },
   };
+}
+
+/**
+ * Substitutes the declaration-derived tokens into a mapping expression. This is what lets a single
+ * entry cover every discriminator: `"Acme.Api.Models.{sourceNamespace}"` resolves per declaration.
+ */
+export function interpolateMappingValue(
+  value: string,
+  context: Pick<
+    ValueExpressionContext,
+    "entityName" | "sourceDir" | "sourcePath" | "sourceNamespace"
+  >,
+): string {
+  if (!value.includes("{")) {
+    return value;
+  }
+
+  return value
+    .replaceAll("{typeName}", context.entityName)
+    .replaceAll("{sourceDir}", context.sourceDir)
+    .replaceAll("{sourcePath}", context.sourcePath)
+    .replaceAll("{sourceNamespace}", context.sourceNamespace);
 }
 
 /** Merges registries; earlier registries win for values and provided expressions. */
@@ -138,6 +176,9 @@ export function composeRegistries(
         if (typeof provided === "string" && provided.length > 0) {
           return provided;
         }
+        if (provided && typeof provided === "object" && provided.value.length > 0) {
+          return provided;
+        }
       }
       return undefined;
     },
@@ -149,19 +190,28 @@ interface LegacyMatcher {
   pattern?: RegExp;
   /** Undefined when the entry has no `type`, i.e. it matches every scalar. */
   types?: ScalarKind[];
+  /** Undefined when the entry has no `source`, i.e. it matches every declaring file. */
+  source?: RegExp;
   value: string;
+  cast?: "unknown";
+  /** The entry this matcher was compiled from, so the drift report can name it. */
+  entry: MappingEntry;
 }
 
 function matchesLegacyMapping(
   matcher: LegacyMatcher,
   scalar: ScalarKind,
-  path: string,
+  context: Pick<ValueExpressionContext, "path" | "sourcePath">,
 ): boolean {
   if (matcher.types && !matcher.types.includes(scalar)) {
     return false;
   }
 
-  return matcher.pattern === undefined || matcher.pattern.test(path);
+  if (matcher.source && !matcher.source.test(context.sourcePath)) {
+    return false;
+  }
+
+  return matcher.pattern === undefined || matcher.pattern.test(context.path);
 }
 
 function compileLegacyMappings(mappings: LegacyMappings): LegacyMatcher[] {
@@ -181,14 +231,23 @@ function compileMappingEntry(entry: MappingEntry, index: number): LegacyMatcher 
     throw new Error(`${at}.value must be a non-empty expression string.`);
   }
 
-  if (entry.path !== undefined && typeof entry.path !== "string") {
-    throw new Error(`${at}.path must be a path pattern string.`);
+  for (const key of ["path", "source"] as const) {
+    if (entry[key] !== undefined && typeof entry[key] !== "string") {
+      throw new Error(`${at}.${key} must be a ${key} pattern string.`);
+    }
+  }
+
+  if (entry.cast !== undefined && entry.cast !== "unknown") {
+    throw new Error(`${at}.cast must be "unknown" when set.`);
   }
 
   return {
     pattern: entry.path === undefined ? undefined : legacyPatternToRegExp(entry.path),
     types: compileMappingEntryTypes(entry.type, at),
+    source: entry.source === undefined ? undefined : legacyPatternToRegExp(entry.source),
     value: entry.value,
+    cast: entry.cast,
+    entry,
   };
 }
 
@@ -220,11 +279,19 @@ function compileLegacyMappingObject(
   for (const [key, value] of Object.entries(mappings)) {
     if (typeof value === "string") {
       // { pattern: expression }
-      matchers.push({ pattern: legacyPatternToRegExp(key), value });
+      matchers.push({
+        pattern: legacyPatternToRegExp(key),
+        value,
+        entry: { path: key, value },
+      });
     } else if (Array.isArray(value)) {
       // { expression: [patterns] }
       for (const pattern of value) {
-        matchers.push({ pattern: legacyPatternToRegExp(pattern), value: key });
+        matchers.push({
+          pattern: legacyPatternToRegExp(pattern),
+          value: key,
+          entry: { path: pattern, value: key },
+        });
       }
     } else {
       throw new Error(

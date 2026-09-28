@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, extname, join, relative, sep } from "node:path";
 import { buildEntityGraph } from "./graph";
+import type { DriftRecorder } from "./report";
 import type {
   EntityNode,
   EnumNode,
@@ -10,6 +11,7 @@ import type {
   NormalizedProject,
   ObjectNode,
   ReferenceNode,
+  ProvidedValue,
   ResolvedTypemockrConfig,
   TypeNode,
   TypemockrArrayCount,
@@ -24,6 +26,7 @@ interface EmitContext {
   graph: Map<string, Set<string>>;
   mockName(entity: Pick<EntityNode, "name" | "sourceFile">): string;
   entitiesByMockName: Map<string, EntityNode[]>;
+  recorder?: DriftRecorder;
 }
 
 interface ImportBinding {
@@ -46,6 +49,7 @@ export function emitFiles(
   project: NormalizedProject,
   config: ResolvedTypemockrConfig,
   registry: GenerationRegistry = {},
+  recorder?: DriftRecorder,
 ): GeneratedFile[] {
   const outputPathBySource = new Map(
     project.files.map((file) => [file.sourceFile, getOutputFilePath(config, file.sourceFile)]),
@@ -77,6 +81,7 @@ export function emitFiles(
     graph: buildEntityGraph(project),
     mockName,
     entitiesByMockName,
+    recorder,
   };
 
   return project.files.map((file) => {
@@ -493,14 +498,15 @@ function emitPropertyValue(
 ): string {
   const path = joinPath(parentPath, property.name);
   const segments = [...parentPath.split(".").slice(1), property.name];
-  const direct = resolveRegistryExpression(entity, property.type, path, context.registry);
+  const direct = resolveRegistryExpression(entity, property.type, path, context);
   const value = direct === undefined
     ? emitDefaultValueExpression(entity, property.type, path, context)
     : applyPropertyTypeAssertion(
-        direct,
+        direct.value,
         entity,
         segments,
         context.config.format,
+        direct.cast,
       );
 
   // `always` treats the property as required; `never` drops it before we get here.
@@ -526,9 +532,28 @@ function emitValueExpression(
   node: TypeNode,
   path: string,
   context: FileEmitContext,
+  /**
+   * Whether a registry-supplied value gets the same `as Entity["prop"]` assertion a property does.
+   * Only positions that have a sound indexed access set this — an array element does, a union
+   * member shares its parent's path and would assert the wrong type.
+   */
+  assertRegistryValue = false,
 ): string {
-  const custom = resolveRegistryExpression(entity, node, path, context.registry);
-  return custom ?? emitDefaultValueExpression(entity, node, path, context);
+  const custom = resolveRegistryExpression(entity, node, path, context);
+
+  if (custom === undefined) {
+    return emitDefaultValueExpression(entity, node, path, context);
+  }
+
+  return assertRegistryValue
+    ? applyPropertyTypeAssertion(
+        custom.value,
+        entity,
+        path.split(".").slice(1),
+        context.config.format,
+        custom.cast,
+      )
+    : custom.value;
 }
 
 function emitDefaultValueExpression(
@@ -593,7 +618,7 @@ function emitArrayExpression(
   path: string,
   context: FileEmitContext,
 ): string {
-  const value = emitValueExpression(entity, element, `${path}[]`, context);
+  const value = emitValueExpression(entity, element, `${path}[]`, context, true);
   const arrayExpression = `faker.helpers.multiple(() => ${wrapArrowValue(value)}${emitArrayCountArgument(context.config.arrayCount)})`;
 
   if (
@@ -844,30 +869,91 @@ function visitTypeNode(node: TypeNode, visit: (node: TypeNode) => void) {
   }
 }
 
+interface ResolvedRegistryValue {
+  value: string;
+  cast?: "unknown";
+}
+
 function resolveRegistryExpression(
   entity: EntityNode,
   node: TypeNode,
   path: string,
-  registry: GenerationRegistry,
-): string | undefined {
-  const mapped = registry.values?.[path];
-  if (typeof mapped === "string" && mapped.length > 0) {
-    return mapped;
-  }
-
-  const provided = registry.provideValue?.({
+  context: Pick<FileEmitContext, "registry" | "config" | "recorder">,
+): ResolvedRegistryValue | undefined {
+  const { registry, recorder } = context;
+  const valueContext = {
     kind: node.kind,
     path,
     entityName: entity.name,
     sourceFile: entity.sourceFile,
+    ...getSourceLocationTokens(context.config, entity.sourceFile),
     scalar: node.kind === "scalar" ? node.scalar : undefined,
     targetName:
       node.kind === "reference" && !node.genericParameter ? node.name : undefined,
     genericName:
       node.kind === "reference" && node.genericParameter ? node.name : undefined,
-  });
+  };
 
-  return typeof provided === "string" && provided.length > 0 ? provided : undefined;
+  const mapped = registry.values?.[path];
+  const provided: ProvidedValue | undefined | null =
+    typeof mapped === "string" && mapped.length > 0
+      ? mapped
+      : registry.provideValue?.(valueContext);
+
+  const resolved = normalizeProvidedValue(provided);
+
+  if (resolved === undefined) {
+    recorder?.scalarFellThrough(valueContext);
+    return undefined;
+  }
+
+  recorder?.scalarResolved(valueContext, resolved.value, resolved.cast === "unknown");
+  return resolved;
+}
+
+function normalizeProvidedValue(
+  provided: ProvidedValue | undefined | null,
+): ResolvedRegistryValue | undefined {
+  if (typeof provided === "string") {
+    return provided.length > 0 ? { value: provided } : undefined;
+  }
+
+  if (provided && typeof provided === "object" && provided.value.length > 0) {
+    return { value: provided.value, cast: provided.cast };
+  }
+
+  return undefined;
+}
+
+const sourceLocationCache = new Map<string, {
+  sourcePath: string;
+  sourceDir: string;
+  sourceNamespace: string;
+}>();
+
+/** The `{typeName}`/`{sourcePath}`/… inputs a mapping value can be built from. */
+function getSourceLocationTokens(
+  config: Pick<ResolvedTypemockrConfig, "baseDir" | "projectRootDir">,
+  sourceFile: string,
+) {
+  const key = `${config.baseDir.join("|")}::${config.projectRootDir}::${sourceFile}`;
+  const cached = sourceLocationCache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const sourcePath = stripSourceExtension(getRelativeSourcePath(config, sourceFile))
+    .split(sep)
+    .join("/");
+  const lastSlash = sourcePath.lastIndexOf("/");
+  const tokens = {
+    sourcePath,
+    sourceDir: lastSlash === -1 ? "" : sourcePath.slice(0, lastSlash),
+    sourceNamespace: sourcePath.split("/").join("."),
+  };
+
+  sourceLocationCache.set(key, tokens);
+  return tokens;
 }
 
 function getRuleLines(entity: EntityNode, registry: GenerationRegistry): string[] {
@@ -940,6 +1026,7 @@ function applyPropertyTypeAssertion(
   entity: EntityNode,
   segments: string[],
   format: TypemockrOutputFormat,
+  cast?: "unknown",
 ): string {
   if (format !== "ts") {
     return value;
@@ -947,7 +1034,15 @@ function applyPropertyTypeAssertion(
 
   const access = emitPropertyTypeAccess(entity, segments);
 
-  return access === undefined ? value : `(${value}) as ${access}`;
+  if (access === undefined) {
+    return value;
+  }
+
+  // TypeScript rejects a direct assertion between unrelated types, so a deliberate deviation
+  // (an ISO string for a `Date` field) has to go through `unknown`.
+  return cast === "unknown"
+    ? `(${value}) as unknown as ${access}`
+    : `(${value}) as ${access}`;
 }
 
 function getJsDocEntityTypeReference(entity: EntityNode, outputFile: string): string {

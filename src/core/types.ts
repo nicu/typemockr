@@ -170,14 +170,41 @@ export type LegacyMappingProvider = (
 
 /**
  * One entry of the ordered `mappings` array. `path` is a `*`-wildcard glob matched against the
- * value path (`Entity.prop`), `type` restricts the entry to those scalar kinds. Omitting `path`
- * matches every path, so `{ type, value }` alone is a per-type fallback; omitting `type` matches
- * every scalar, so `{ path, value }` alone behaves like the object form.
+ * value path (`Entity.prop`), `type` restricts the entry to those scalar kinds, and `source` is a
+ * `*`-wildcard glob matched against the declaring file's path relative to `baseDir`, without the
+ * extension (`Store/Order/PaymentPlan`). Every omitted field matches everything, so `{ type, value }`
+ * alone is a per-type fallback and `{ path, value }` alone behaves like the object form.
+ *
+ * `value` may use the tokens in {@link MappingValueTokens}, which is how a discriminator is derived
+ * from the declaration's own path rather than hard-coded per type.
  */
 export interface MappingEntry {
   path?: string;
   type?: ScalarKind | ScalarKind[];
+  source?: string;
   value: string;
+  /**
+   * Set to `"unknown"` when the expression deliberately produces a different type than the field
+   * declares — `Date` fields carrying the ISO string the wire actually holds, say. The emitted
+   * assertion then goes through `unknown`, which TypeScript allows between unrelated types, and the
+   * drift report stops treating the entry as a type/generator mismatch.
+   */
+  cast?: "unknown";
+}
+
+/**
+ * Tokens substituted into a {@link MappingEntry.value}, all derived from the declaring file:
+ *
+ * - `{typeName}` — `PaymentPlan`
+ * - `{sourceDir}` — `Store/Order`, empty at the root of `baseDir`
+ * - `{sourcePath}` — `Store/Order/PaymentPlan`
+ * - `{sourceNamespace}` — `Store.Order.PaymentPlan`
+ */
+export interface MappingValueTokens {
+  typeName: string;
+  sourceDir: string;
+  sourcePath: string;
+  sourceNamespace: string;
 }
 
 /**
@@ -254,19 +281,61 @@ export interface ValueExpressionContext {
   entityName: string;
   /** Absolute path of the file declaring the entity. */
   sourceFile: string;
+  /** `sourceFile` relative to its `baseDir`, without the extension, e.g. `Store/Order/PaymentPlan`. */
+  sourcePath: string;
+  /** Directory part of `sourcePath`, empty at the root of `baseDir`. */
+  sourceDir: string;
+  /** `sourcePath` with `/` replaced by `.`, e.g. `Store.Order.PaymentPlan`. */
+  sourceNamespace: string;
   scalar?: ScalarKind;
   targetName?: string;
   genericName?: string;
 }
 
+/**
+ * What a registry hands back for one value. The object form exists so an expression can say that it
+ * deliberately deviates from the declared type; a bare string means "this matches the declaration".
+ */
+export type ProvidedValue = string | { value: string; cast?: "unknown" };
+
 export interface GenerationRegistry {
   values?: Record<string, string>;
-  provideValue?(context: ValueExpressionContext): string | undefined | null;
+  provideValue?(context: ValueExpressionContext): ProvidedValue | undefined | null;
   rules?: Record<string, string[]>;
+}
+
+export interface DriftMismatch {
+  path: string;
+  entityName: string;
+  sourceFile: string;
+  declared: ScalarKind;
+  generated: ScalarKind;
+  value: string;
+}
+
+export interface DriftDefaultGroup {
+  scalar: ScalarKind;
+  paths: string[];
+}
+
+export interface DriftDeadMapping {
+  index: number;
+  entry: MappingEntry;
+}
+
+/**
+ * Advisory output of a generation run: what generated a value of the wrong type, what nothing
+ * mapped, and which mapping entries are now dead.
+ */
+export interface DriftReport {
+  mismatches: DriftMismatch[];
+  defaults: DriftDefaultGroup[];
+  deadMappings: DriftDeadMapping[];
 }
 
 export interface GenerateMocksResult {
   config: ResolvedTypemockrConfig;
   project: NormalizedProject;
   files: GeneratedFile[];
+  report: DriftReport;
 }

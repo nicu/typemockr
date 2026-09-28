@@ -1,5 +1,6 @@
 import { loadConfig } from "./core/load";
 import { generateMocks } from "./core/generate";
+import { formatDriftReport } from "./core/report";
 
 export async function main() {
   const configPath = process.argv[2];
@@ -8,6 +9,11 @@ export async function main() {
   process.stdout.write(
     `Generated ${result.files.length} file${result.files.length === 1 ? "" : "s"}.\n`,
   );
+
+  const drift = formatDriftReport(result.report);
+  if (drift.length > 0) {
+    process.stdout.write(`${drift}\n`);
+  }
 }
 
 main().catch((error: unknown) => {

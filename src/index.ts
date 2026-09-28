@@ -12,9 +12,14 @@ export {
   resolveConfig,
 } from "./core/load";
 export { defineRegistry } from "./core/registry";
+export { formatDriftReport, formatMappingMismatches } from "./core/report";
 export { buildEntityGraph, markRecursiveEntities } from "./core/graph";
 export { normalizeProject } from "./core/normalize";
 export type {
+  DriftDeadMapping,
+  DriftDefaultGroup,
+  DriftMismatch,
+  DriftReport,
   EntityNode,
   FileModel,
   GenerateMocksResult,
@@ -26,8 +31,10 @@ export type {
   MappingEntry,
   MockNameContext,
   MockNameOption,
+  MappingValueTokens,
   NormalizedProject,
   PropertyNode,
+  ProvidedValue,
   RenderSourceTextOptions,
   ResolvedTypemockrConfig,
   TypemockrArrayCount,
