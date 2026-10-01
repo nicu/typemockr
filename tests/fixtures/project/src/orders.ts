@@ -1,13 +1,13 @@
-import type { Box, Person, Status } from "./people";
-import type { Product, Settings } from "./products";
+import type { Customer, PaymentStatus } from "./customers";
+import type { Bundle, Product, Settings } from "./products";
 
 export interface Order {
   id: string;
-  person: Person;
+  customer: Customer;
   product: Product;
-  packaging: Box<Product>;
+  giftBundle: Bundle<Product>;
   catalog: Record<string, Product>;
-  status: Status | "draft";
-  color?: string;
+  status: PaymentStatus | "draft";
+  note?: string;
   settings: Settings;
 }

@@ -1,6 +1,6 @@
 [
   {
-    "name": "User",
+    "name": "Customer",
     "declarationKind": "class",
     "type": {
       "kind": "object",

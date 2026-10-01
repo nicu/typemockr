@@ -47,7 +47,10 @@
                 "optional": false,
                 "readonly": false
               }
-            ]
+            ],
+            "keyed": {
+              "name": "MetadataKey"
+            }
           },
           "optional": false,
           "readonly": false

@@ -124,7 +124,7 @@ function resolveInlinePath(projectRootDir: string, filePath: string): string {
   return filePath.startsWith("/") ? filePath : `${projectRootDir}/${filePath}`;
 }
 
-function loadRegistry(
+export function loadRegistry(
   config: ResolvedTypemockrConfig,
   recorder?: DriftRecorder,
 ): GenerationRegistry {

@@ -6,10 +6,10 @@ export class Account {
   constructor(private readonly apiKey: string) {}
 }
 
-export class Admin extends Account {
+export class StaffAccount extends Account {
   level = 0;
 }
 
-export class Plain {
+export class Genre {
   name = "";
 }

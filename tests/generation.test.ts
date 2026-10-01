@@ -27,7 +27,7 @@ describe("generateMocks", () => {
     expect(ordersFile?.code).toContain('import { faker } from "@faker-js/faker";');
     expect(ordersFile?.code).not.toContain("__typemockrRegistry");
     expect(ordersFile?.code).toContain("export function MockOrder");
-    expect(ordersFile?.code).toContain("MockPerson");
+    expect(ordersFile?.code).toContain("MockCustomer");
     expect(ordersFile?.code).toContain("MockProduct");
   });
 
@@ -37,13 +37,13 @@ describe("generateMocks", () => {
 
     const result = await renderFixture(fixture.rootDir);
     expect(result.files).toHaveLength(1);
-    expect(result.files[0]?.outputFile.endsWith("person.mock.ts")).toBe(true);
+    expect(result.files[0]?.outputFile.endsWith("customer.mock.ts")).toBe(true);
     expect(result.files[0]?.code.trim()).toBe(
       [
         'import { faker } from "@faker-js/faker";',
-        'import type { Person } from "../src/person";',
+        'import type { Customer } from "../src/customer";',
         "",
-        "export function MockPerson(overrides: Partial<Person> = {}): Person {",
+        "export function MockCustomer(overrides: Partial<Customer> = {}): Customer {",
         "  const result = {",
         '    "name": faker.lorem.words(),',
         "  };",
@@ -58,15 +58,15 @@ describe("mockName", () => {
   test("supports a function and renames exports and references", async () => {
     const { renderMocksFromSourceText } = await import("../src/index");
     const file = await renderMocksFromSourceText(
-      "export interface Leaf { v: string }\nexport interface Tree { leaf: Leaf }",
+      "export interface Author { name: string }\nexport interface Book { author: Author }",
       {
-        sourceFilePath: "src/deep/tree-models/input.ts",
+        sourceFilePath: "src/catalog/book-models/input.ts",
         mockName: ({ name, dir }) => `build${dir}${name}`,
       },
     );
 
-    expect(file.code).toContain("export function buildDeepTreeModelsLeaf(");
-    expect(file.code).toContain('"leaf": buildDeepTreeModelsLeaf(),');
+    expect(file.code).toContain("export function buildCatalogBookModelsAuthor(");
+    expect(file.code).toContain('"author": buildCatalogBookModelsAuthor(),');
   });
 
   test("rejects names that are not identifiers or not unique within a file", async () => {

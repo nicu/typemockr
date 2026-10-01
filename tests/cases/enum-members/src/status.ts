@@ -1,5 +1,5 @@
-export enum Status {
-  Active = "Active",
+export enum OrderStatus {
+  Shipped = "Shipped",
   Pending = "Pending",
   "on-hold" = "on-hold",
 }

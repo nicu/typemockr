@@ -77,6 +77,11 @@ export interface ObjectNode {
   properties: PropertyNode[];
   indexSignature?: IndexSignatureNode;
   /**
+   * Set when the properties come from a mapped type over a finite key set (`Record<Enum, T>`,
+   * `{ [K in "a" | "b"]: T }`): the object is a dictionary, not a record of distinct fields.
+   */
+  keyed?: { name?: string };
+  /**
    * True when the type has private, protected or `#private` members. Those make a class
    * nominal: no object literal can satisfy it, so TS output needs a type assertion.
    */

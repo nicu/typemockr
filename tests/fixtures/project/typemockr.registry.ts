@@ -1,13 +1,13 @@
 export default {
   values: {
-    "Person.name": '"Ada Lovelace"',
-    "Order.status": '"error"',
-    "Order.color": '"blue"',
+    "Customer.name": '"Ada Lovelace"',
+    "Order.status": '"declined"',
+    "Order.note": '"Leave at the door"',
   },
   rules: {
     Order: [
-      'if (overrides.color === undefined && result.status === "error") {',
-      '  result.color = "red";',
+      'if (overrides.note === undefined && result.status === "declined") {',
+      '  result.note = "Payment declined";',
       "}",
     ],
   },

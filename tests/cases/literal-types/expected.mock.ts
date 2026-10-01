@@ -1,13 +1,13 @@
 import { faker } from "@faker-js/faker";
-import type { ImportOperation, Channel, ImportRequest, Level } from "../src/input";
-
-export function MockImportOperation(overrides?: ImportOperation): ImportOperation {
-  const result: ImportOperation = 0 as ImportOperation;
-  return overrides ?? result;
-}
+import type { Channel, ImportOperation, ImportRequest, Level } from "../src/input";
 
 export function MockChannel(overrides?: Channel): Channel {
   const result: Channel = faker.helpers.arrayElement([0 as const, 1 as const]) as Channel;
+  return overrides ?? result;
+}
+
+export function MockImportOperation(overrides?: ImportOperation): ImportOperation {
+  const result: ImportOperation = 0 as ImportOperation;
   return overrides ?? result;
 }
 

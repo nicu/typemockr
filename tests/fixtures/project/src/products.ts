@@ -9,6 +9,17 @@ export type ProductSummary = Omit<Product, "sku">;
 
 export type ProductNames = Record<"primary" | "secondary", string>;
 
+export interface Bundle<T> {
+  value: T;
+  metadata?: Partial<Record<"label" | "slug", string>>;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  children: Category[];
+}
+
 export type Settings = Required<
   Readonly<{
     enabled?: boolean;

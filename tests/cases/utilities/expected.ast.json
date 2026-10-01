@@ -1,6 +1,6 @@
 [
   {
-    "name": "User",
+    "name": "Customer",
     "declarationKind": "interface",
     "type": {
       "kind": "object",
@@ -38,7 +38,7 @@
     "recursive": false
   },
   {
-    "name": "UserPick",
+    "name": "CustomerPick",
     "declarationKind": "typeAlias",
     "type": {
       "kind": "object",
@@ -67,7 +67,7 @@
     "recursive": false
   },
   {
-    "name": "UserOmit",
+    "name": "CustomerOmit",
     "declarationKind": "typeAlias",
     "type": {
       "kind": "object",
@@ -96,7 +96,7 @@
     "recursive": false
   },
   {
-    "name": "UserPartial",
+    "name": "CustomerPartial",
     "declarationKind": "typeAlias",
     "type": {
       "kind": "object",
@@ -134,7 +134,7 @@
     "recursive": false
   },
   {
-    "name": "UserRequired",
+    "name": "CustomerRequired",
     "declarationKind": "typeAlias",
     "type": {
       "kind": "object",
@@ -172,7 +172,7 @@
     "recursive": false
   },
   {
-    "name": "UserReadonly",
+    "name": "CustomerReadonly",
     "declarationKind": "typeAlias",
     "type": {
       "kind": "object",
@@ -210,7 +210,7 @@
     "recursive": false
   },
   {
-    "name": "UserRecord",
+    "name": "CustomerRecord",
     "declarationKind": "typeAlias",
     "type": {
       "kind": "object",

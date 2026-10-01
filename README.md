@@ -128,7 +128,7 @@ makes the shape of a mock stable, so a test narrows from a complete object inste
 arbitrary one:
 
 ```ts
-const preorder = MockPreorder({ paymentToken: undefined });
+const order = MockOrder({ paymentToken: undefined });
 ```
 
 Note that under `"maybe"`, a property whose value comes from `registry` or `mappings` is emitted
@@ -145,13 +145,13 @@ after `overrides` are applied and can adjust `result`:
 ```js
 export default {
   rules: {
-    Preorder: ["if (!result.paymentMethod) { delete result.paymentToken; }"],
+    Order: ["if (!result.paymentMethod) { delete result.paymentToken; }"],
   },
 };
 ```
 
 ```ts
-export function MockPreorder(overrides: Partial<Preorder> = {}): Preorder {
+export function MockOrder(overrides: Partial<Order> = {}): Order {
   const base = { /* ... */ };
   const result = { ...base, ...overrides };
   if (!result.paymentMethod) { delete result.paymentToken; }
@@ -285,3 +285,109 @@ typemockr drift report:
 
 `generateMocks()` and `renderMocks()` return the same data as `result.report`
 (`{ mismatches, defaults, deadMappings }`) for projects that want to act on it themselves.
+
+## Walking real data
+
+The walker checks a real JSON value — an API response, a fixture — against the type it should be,
+using the same config, type resolution and mappings as generation. It reports every leaf with the
+path a mapping would see, which mapping would generate it, and where the JSON and the model disagree.
+
+```bash
+npx typemockr walk  --model Store/Book/DetailsResponse response.json [--config typemockr.json] [--format json|text]
+npx typemockr drift --model Store/Book/DetailsResponse response.json [--all] [--type content=Store/Magazine/MagazineContent]   # exit code 1 when there is drift
+```
+
+`drift` prints a block per kind of disagreement, under a heading that says what disagrees. Each row
+is a model field, what the model or the JSON has there, in how many of the instances walked
+(`N of M`, or `N×` when the total is unknown), and one JSON path. A note, when there is one, goes on
+its own line under the row. `--all` prints one line per occurrence instead.
+
+```
+Required by the model, not in the JSON
+  Chapter.summary             string     4 of 8  at product.chapters[0].summary
+  MagazineContent.backIssues  Edition[]  1 of 1  at content.backIssues
+      walked as MagazineContent by a type hint; the model declares ContentBase
+
+In the JSON, not in the model
+  Edition.weight  number  2 of 4  at editions[0].weight
+
+3 fields differ, 7 occurrences
+```
+
+`--format json` prints `{ drift, groups, inferred }`: every occurrence, the groups as
+`{ kind, modelPath, count, total?, example, heading, detail?, note?, message, type?, source? }`, and
+the objects walked as a type the model did not declare (see [Polymorphism](#polymorphism)).
+`heading`, `detail` and `note` are the pieces of the text output; `message` is the same in one line:
+`Edition.weight: in the JSON (number), not in the model; 2 of 4, at editions[0].weight`.
+
+`--model` is the declaring file relative to `baseDir`, without the extension; the type is the one
+named like the file, or the only one in it. Use `path#TypeName` otherwise. Without `--config` the
+config is discovered as for generation; with it, the config's relative paths resolve from the
+config file's directory.
+
+```
+editions[0].name  Edition.name  string  "Hardcover"
+editions[0].pages  Edition.pages  number  320  → faker.number.int({min: 50, max: 900}) (mappings[18] path *.pages)
+product.status  BookProduct.status  enum:StockStatus  "InStock"
+```
+
+```ts
+import { createWalker, formatDrift, groupDrift, walk } from "typemockr";
+
+const { leaves, drift, seen, inferred } = await walk({ config: "typemockr.json", model: "Store/Cart", input });
+groupDrift(drift, seen); // [{ kind, modelPath, count, total?, example, heading, detail?, note?, message }]
+formatDrift(drift, { seen }); // the CLI's text; { all: true } for one line per occurrence
+
+// Loads the project once, for many inputs.
+const walker = await createWalker({ config: "typemockr.json" });
+walker.walk("Store/Cart", input);
+walker.walk("Store/Book/DetailsResponse", input, { types: { content: "Store/Magazine/MagazineContent" } });
+```
+
+Each leaf is `{ path, modelPath, source, kind, enumName?, value, mapping? }`:
+
+- `path` is the JSON path (`product.editions[2].name`), `modelPath` the mapping path
+  (`Edition.name`, `Entity.list[]`), and `source` the declaring file relative to `baseDir`.
+- `kind` is `string`, `number`, `boolean`, `date`, `enum`, `null` or `unknown` (under `any`/`unknown`).
+- `mapping` is `{ value, source?, path, index? }`: the registry value or mapping entry generation
+  would use, found by the same lookup and with the same precedence, with tokens substituted.
+
+### Polymorphism
+
+An object with a `$type` (or `$Type`) string is walked as the type it names when that type extends
+or implements the expected one. The value is matched to a declaration by its path:
+`Acme.Api.Models.Store.Sku` finds `Store/Sku` (longest namespace suffix, case-insensitive,
+assembly and generic suffixes ignored). Leaves are then reported under that type — inherited
+properties included, as `BookProduct.name` rather than `ProductBase.name` — which is also the path its
+own mock would be generated with.
+
+Without a `$type` (or with an empty one), the JSON's own keys decide. The keys the declared type
+lacks must all be declared by one subclass, which is then walked; when several subclasses declare
+all of them the least derived wins, and unrelated ones are a tie, so the declared type is walked and
+the drift `note` says so. Required fields the JSON lacks are never evidence — an object with no key
+of its own is walked as declared, even when only one subclass could be meant.
+
+For that case, `types` (`--type <jsonPath>=<path[#Type]>`, repeatable) names the type to walk a JSON
+path as: `{ content: "Store/Magazine/MagazineContent", "payments[]": "Store/Payment/GiftCard" }`. Paths are drift
+paths, `[]` matches every index, and `$` is the root. A hint wins over `$type` and over inference,
+and must be assignable to the declared type. `createWalker({ types })` sets them for every walk;
+`walker.walk(model, input, { types })` adds to or replaces them for one.
+
+`inferred` lists each object walked as something other than its declared type without a `$type`
+saying so: `{ path, declared, type, source, by: "keys" | "hint" }`.
+
+### Drift kinds
+
+Each entry is `{ path, kind, modelPath, expected?, actual?, note?, type?, source? }`. `seen` counts how many times
+each model path was walked, present or not, which is what `groupDrift` reports counts against.
+
+| Kind | Heading in the text output | Meaning |
+| --- | --- | --- |
+| `key-mismatch` | Keys differ from the model's | A mapped type over a finite key set (`Record<Enum, T>`, `{ [K in "a" \| "b"]: T }`) whose JSON keys are not exactly that set. One entry on the object, with the key set as `expected` and the JSON's keys as `actual`, instead of one per key; also when every JSON key is valid and some are absent (the type over-promises). |
+| `missing-required` | Required by the model, not in the JSON | A required property absent from the JSON. `type` is its declared type as `{ kind, name?, source?, values?, element?, nullable? }` — `kind` one of `string`, `number`, `boolean`, `date`, `enum`, `array`, `object`, `null`, `union`, `unknown`; `name`/`source` the model type and its declaring file — and `source` the declaring file of the field's owner. |
+| `unmodelled` | In the JSON, not in the model | A property in the JSON that the (resolved) type does not declare. `$type`/`$Type` are exempt. When the object has no `$type` and the expected type has subclasses, `note` names up to three that declare it, and says when the keys fit no single subclass. |
+| `type-mismatch` | Another type than the model says | The JSON holds a different kind than declared, including `null` for a required non-nullable property. |
+| `null-for-optional` | null where the model says optional | `null` where the type says `T \| undefined`. |
+| `string-for-date` | The model says Date, the JSON has an ISO string | An ISO string where the type says `Date`. Reported once per `modelPath`, since it is systemic. |
+| `enum-mismatch` | Not a value of the model's enum | A string on a numeric enum (or the reverse), or a value that is no member. |
+| `unknown-discriminator` | $type the model does not know | A `$type` that names no declaration, or one not assignable to the expected type; the expected type is walked instead. An empty `$type` is reported too, and the type is then inferred from the keys. |

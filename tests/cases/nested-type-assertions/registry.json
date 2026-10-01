@@ -1,11 +1,11 @@
 {
   "values": {
-    "Listing.required.primary": "faker.lorem.words()",
-    "Listing.optional.primary": "faker.lorem.words()",
-    "Listing.items[].label": "faker.lorem.words()",
-    "Listing.optionalItems[].label": "faker.lorem.words()",
-    "Listing.groups[].entries[].code": "faker.lorem.words()",
-    "Listing.deep.inner.note": "faker.lorem.words()",
-    "Listing.wrapped<T>.title": "faker.lorem.words()"
+    "BookListing.required.front": "faker.lorem.words()",
+    "BookListing.optional.front": "faker.lorem.words()",
+    "BookListing.items[].label": "faker.lorem.words()",
+    "BookListing.optionalItems[].label": "faker.lorem.words()",
+    "BookListing.groups[].entries[].code": "faker.lorem.words()",
+    "BookListing.deep.inner.note": "faker.lorem.words()",
+    "BookListing.wrapped<T>.title": "faker.lorem.words()"
   }
 }

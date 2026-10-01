@@ -1,18 +1,18 @@
 import { faker } from "@faker-js/faker";
 
 /**
- * @param {Partial<import("../src/input").Listing>} [overrides={}]
- * @returns {import("../src/input").Listing}
+ * @param {Partial<import("../src/input").BookListing>} [overrides={}]
+ * @returns {import("../src/input").BookListing}
  */
-export function MockListing(overrides = {}) {
+export function MockBookListing(overrides = {}) {
   const result = {
     "required": {
-      "primary": faker.lorem.words(),
-      "secondary": faker.lorem.words(),
+      "front": faker.lorem.words(),
+      "back": faker.lorem.words(),
     },
     "optional": faker.helpers.maybe(() => ({
-      "primary": faker.lorem.words(),
-      "secondary": faker.lorem.words(),
+      "front": faker.lorem.words(),
+      "back": faker.lorem.words(),
     })),
     "items": faker.helpers.multiple(() => ({
       "label": faker.lorem.words(),
@@ -38,11 +38,11 @@ export function MockListing(overrides = {}) {
 }
 
 /**
- * @param {import("../src/input").Slot} [overrides]
- * @returns {import("../src/input").Slot}
+ * @param {import("../src/input").CoverSide} [overrides]
+ * @returns {import("../src/input").CoverSide}
  */
-export function MockSlot(overrides) {
-  const result = faker.helpers.arrayElement(["primary", "secondary"]);
+export function MockCoverSide(overrides) {
+  const result = faker.helpers.arrayElement(["front", "back"]);
   return overrides ?? result;
 }
 

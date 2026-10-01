@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
-import type { User, UserOmit, UserPartial, UserPick, UserReadonly, UserRecord, UserRequired } from "../src/input";
+import type { Customer, CustomerOmit, CustomerPartial, CustomerPick, CustomerReadonly, CustomerRecord, CustomerRequired } from "../src/input";
 
-export function MockUser(overrides: Partial<User> = {}): User {
+export function MockCustomer(overrides: Partial<Customer> = {}): Customer {
   const result = {
     "id": faker.lorem.words(),
     "name": faker.lorem.words(),
@@ -10,7 +10,7 @@ export function MockUser(overrides: Partial<User> = {}): User {
   return { ...result, ...overrides };
 }
 
-export function MockUserOmit(overrides: Partial<UserOmit> = {}): UserOmit {
+export function MockCustomerOmit(overrides: Partial<CustomerOmit> = {}): CustomerOmit {
   const result = {
     "id": faker.lorem.words(),
     "name": faker.lorem.words(),
@@ -18,7 +18,7 @@ export function MockUserOmit(overrides: Partial<UserOmit> = {}): UserOmit {
   return { ...result, ...overrides };
 }
 
-export function MockUserPartial(overrides: Partial<UserPartial> = {}): UserPartial {
+export function MockCustomerPartial(overrides: Partial<CustomerPartial> = {}): CustomerPartial {
   const result = {
     "id": faker.helpers.maybe(() => faker.lorem.words()),
     "name": faker.helpers.maybe(() => faker.lorem.words()),
@@ -27,7 +27,7 @@ export function MockUserPartial(overrides: Partial<UserPartial> = {}): UserParti
   return { ...result, ...overrides };
 }
 
-export function MockUserPick(overrides: Partial<UserPick> = {}): UserPick {
+export function MockCustomerPick(overrides: Partial<CustomerPick> = {}): CustomerPick {
   const result = {
     "id": faker.lorem.words(),
     "name": faker.lorem.words(),
@@ -35,7 +35,7 @@ export function MockUserPick(overrides: Partial<UserPick> = {}): UserPick {
   return { ...result, ...overrides };
 }
 
-export function MockUserReadonly(overrides: Partial<UserReadonly> = {}): UserReadonly {
+export function MockCustomerReadonly(overrides: Partial<CustomerReadonly> = {}): CustomerReadonly {
   const result = {
     "id": faker.lorem.words(),
     "name": faker.lorem.words(),
@@ -44,12 +44,12 @@ export function MockUserReadonly(overrides: Partial<UserReadonly> = {}): UserRea
   return { ...result, ...overrides };
 }
 
-export function MockUserRecord(overrides: Partial<UserRecord> = {}): UserRecord {
+export function MockCustomerRecord(overrides: Partial<CustomerRecord> = {}): CustomerRecord {
   const result = {};
   return { ...result, ...overrides };
 }
 
-export function MockUserRequired(overrides: Partial<UserRequired> = {}): UserRequired {
+export function MockCustomerRequired(overrides: Partial<CustomerRequired> = {}): CustomerRequired {
   const result = {
     "id": faker.lorem.words(),
     "name": faker.lorem.words(),

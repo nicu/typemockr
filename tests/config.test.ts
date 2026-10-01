@@ -153,14 +153,14 @@ describe("optional properties", () => {
 });
 
 describe("maxDepth and arrayCount", () => {
-  const src = "export interface Node { name: string; children?: Node[]; tags: string[] }";
+  const src = "export interface Category { name: string; children?: Category[]; tags: string[] }";
 
   test("maxDepth replaces the hardcoded recursion cut-off, and defaults to 2", async () => {
     expect((await renderMocksFromSourceText(src)).code).toContain("maxDepth = 2");
     expect((await renderMocksFromSourceText(src, { maxDepth: 5 })).code).toContain("maxDepth = 5");
     // The cut-off itself is unchanged; only the default moves.
     expect((await renderMocksFromSourceText(src, { maxDepth: 0 })).code).toContain(
-      "depth >= maxDepth ? ([] as NonNullable<Node[\"children\"]>)",
+      "depth >= maxDepth ? ([] as NonNullable<Category[\"children\"]>)",
     );
   });
 
@@ -199,13 +199,13 @@ describe("mappingProvider and mappings", () => {
     const result = await generateFixture(fixture.rootDir);
     const code = result.files[0]?.code ?? "";
 
-    expect(code).toContain('"id": (faker.string.uuid()) as Person["id"],');
-    expect(code).toContain('"email": (faker.internet.email()) as Person["email"],');
+    expect(code).toContain('"id": (faker.string.uuid()) as Customer["id"],');
+    expect(code).toContain('"email": (faker.internet.email()) as Customer["email"],');
     // The provider receives { sourceFile, entityName }.
-    expect(code).toContain('"$type": ("Acme.Person") as Person["$type"],');
+    expect(code).toContain('"$type": ("Acme.Customer") as Customer["$type"],');
     // { expression: [patterns] } and { pattern: expression } shapes.
-    expect(code).toContain('"age": (faker.number.int({ min: 18, max: 99 })) as Person["age"],');
-    expect(code).toContain('"nickname": (faker.person.firstName()) as Person["nickname"],');
+    expect(code).toContain('"age": (faker.number.int({ min: 18, max: 99 })) as Customer["age"],');
+    expect(code).toContain('"nickname": (faker.person.firstName()) as Customer["nickname"],');
     // Unmapped values keep the defaults.
     expect(code).toContain('"birthday": faker.date.recent(),');
 
@@ -217,15 +217,15 @@ describe("mappingProvider and mappings", () => {
     cleanups.push(fixture.cleanup);
     await writeFile(
       join(fixture.rootDir, "registry.js"),
-      'export default { values: { "Person.id": \'"fixed-id"\' } };',
+      'export default { values: { "Customer.id": \'"fixed-id"\' } };',
     );
 
     const config = await loadConfig(fixture.rootDir);
     const result = await renderMocks({ ...config, registryFile: join(fixture.rootDir, "registry.js") });
     const code = result.files[0]?.code ?? "";
 
-    expect(code).toContain('"id": ("fixed-id") as Person["id"],');
-    expect(code).toContain('"email": (faker.internet.email()) as Person["email"],');
+    expect(code).toContain('"id": ("fixed-id") as Customer["id"],');
+    expect(code).toContain('"email": (faker.internet.email()) as Customer["email"],');
   });
 
   test("passes the scalar type and only calls the provider for scalar leaves", async () => {

@@ -1,21 +1,10 @@
 import { faker } from "@faker-js/faker";
 
 /**
- * @param {Partial<import("../src/input").BaseClass>} [overrides={}]
- * @returns {import("../src/input").BaseClass}
+ * @param {Partial<import("../src/input").Coded>} [overrides={}]
+ * @returns {import("../src/input").Coded}
  */
-export function MockBaseClass(overrides = {}) {
-  const result = {
-    "id": faker.lorem.words(),
-  };
-  return { ...result, ...overrides };
-}
-
-/**
- * @param {Partial<import("../src/input").BaseInterface>} [overrides={}]
- * @returns {import("../src/input").BaseInterface}
- */
-export function MockBaseInterface(overrides = {}) {
+export function MockCoded(overrides = {}) {
   const result = {
     "code": faker.lorem.words(),
   };
@@ -23,25 +12,36 @@ export function MockBaseInterface(overrides = {}) {
 }
 
 /**
- * @param {Partial<import("../src/input").ChildClass>} [overrides={}]
- * @returns {import("../src/input").ChildClass}
+ * @param {Partial<import("../src/input").Entity>} [overrides={}]
+ * @returns {import("../src/input").Entity}
  */
-export function MockChildClass(overrides = {}) {
+export function MockEntity(overrides = {}) {
   const result = {
-    "name": faker.lorem.words(),
     "id": faker.lorem.words(),
   };
   return { ...result, ...overrides };
 }
 
 /**
- * @param {Partial<import("../src/input").ChildInterface>} [overrides={}]
- * @returns {import("../src/input").ChildInterface}
+ * @param {Partial<import("../src/input").Genre>} [overrides={}]
+ * @returns {import("../src/input").Genre}
  */
-export function MockChildInterface(overrides = {}) {
+export function MockGenre(overrides = {}) {
   const result = {
     "label": faker.lorem.words(),
     "code": faker.lorem.words(),
+  };
+  return { ...result, ...overrides };
+}
+
+/**
+ * @param {Partial<import("../src/input").Publisher>} [overrides={}]
+ * @returns {import("../src/input").Publisher}
+ */
+export function MockPublisher(overrides = {}) {
+  const result = {
+    "name": faker.lorem.words(),
+    "id": faker.lorem.words(),
   };
   return { ...result, ...overrides };
 }

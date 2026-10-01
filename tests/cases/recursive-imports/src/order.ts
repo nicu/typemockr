@@ -1,7 +1,7 @@
-import type { Person, Product } from "./models";
+import type { Customer, Product } from "./models";
 
 export interface Order {
-  person: Person;
+  customer: Customer;
   product: Product;
   children: Order[];
 }

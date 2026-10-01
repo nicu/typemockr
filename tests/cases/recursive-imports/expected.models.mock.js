@@ -1,10 +1,10 @@
 import { faker } from "@faker-js/faker";
 
 /**
- * @param {Partial<import("../src/models").Person>} [overrides={}]
- * @returns {import("../src/models").Person}
+ * @param {Partial<import("../src/models").Customer>} [overrides={}]
+ * @returns {import("../src/models").Customer}
  */
-export function MockPerson(overrides = {}) {
+export function MockCustomer(overrides = {}) {
   const result = {
     "name": faker.lorem.words(),
   };

@@ -1,33 +1,6 @@
 [
   {
-    "name": "Status",
-    "declarationKind": "enum",
-    "type": {
-      "kind": "enum",
-      "values": [
-        "Active",
-        "Pending",
-        "on-hold"
-      ]
-    },
-    "generics": [],
-    "recursive": false
-  },
-  {
-    "name": "Priority",
-    "declarationKind": "enum",
-    "type": {
-      "kind": "enum",
-      "values": [
-        0,
-        1
-      ]
-    },
-    "generics": [],
-    "recursive": false
-  },
-  {
-    "name": "Task",
+    "name": "Shipment",
     "declarationKind": "interface",
     "type": {
       "kind": "object",
@@ -36,7 +9,7 @@
           "name": "status",
           "type": {
             "kind": "reference",
-            "name": "Status",
+            "name": "OrderStatus",
             "sourceFile": "src/status.ts",
             "genericParameter": false,
             "typeArguments": []
@@ -48,7 +21,7 @@
           "name": "optionalStatus",
           "type": {
             "kind": "reference",
-            "name": "Status",
+            "name": "OrderStatus",
             "sourceFile": "src/status.ts",
             "genericParameter": false,
             "typeArguments": []
@@ -67,7 +40,7 @@
               },
               {
                 "kind": "reference",
-                "name": "Status",
+                "name": "OrderStatus",
                 "sourceFile": "src/status.ts",
                 "genericParameter": false,
                 "typeArguments": []
@@ -83,7 +56,7 @@
             "kind": "array",
             "element": {
               "kind": "reference",
-              "name": "Status",
+              "name": "OrderStatus",
               "sourceFile": "src/status.ts",
               "genericParameter": false,
               "typeArguments": []
@@ -97,15 +70,15 @@
           "type": {
             "kind": "enum",
             "values": [
-              "Active",
+              "Shipped",
               "Pending"
             ],
             "source": {
-              "name": "Status",
+              "name": "OrderStatus",
               "sourceFile": "src/status.ts",
               "exported": true,
               "members": [
-                "Active",
+                "Shipped",
                 "Pending"
               ]
             }
@@ -118,14 +91,14 @@
           "type": {
             "kind": "enum",
             "values": [
-              "Active"
+              "Shipped"
             ],
             "source": {
-              "name": "Status",
+              "name": "OrderStatus",
               "sourceFile": "src/status.ts",
               "exported": true,
               "members": [
-                "Active"
+                "Shipped"
               ]
             }
           },
@@ -133,7 +106,7 @@
           "readonly": false
         },
         {
-          "name": "anyNonActive",
+          "name": "anyNotShipped",
           "type": {
             "kind": "enum",
             "values": [
@@ -141,7 +114,7 @@
               "on-hold"
             ],
             "source": {
-              "name": "Status",
+              "name": "OrderStatus",
               "sourceFile": "src/status.ts",
               "exported": true,
               "members": [
@@ -185,26 +158,53 @@
           "readonly": false
         },
         {
-          "name": "internal",
+          "name": "warehouse",
           "type": {
             "kind": "enum",
             "values": [
-              "a",
-              "b"
+              "north",
+              "south"
             ],
             "source": {
-              "name": "Internal",
-              "sourceFile": "src/task.ts",
+              "name": "Warehouse",
+              "sourceFile": "src/shipment.ts",
               "exported": false,
               "members": [
-                "A",
-                "B"
+                "North",
+                "South"
               ]
             }
           },
           "optional": true,
           "readonly": false
         }
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "OrderStatus",
+    "declarationKind": "enum",
+    "type": {
+      "kind": "enum",
+      "values": [
+        "Shipped",
+        "Pending",
+        "on-hold"
+      ]
+    },
+    "generics": [],
+    "recursive": false
+  },
+  {
+    "name": "Priority",
+    "declarationKind": "enum",
+    "type": {
+      "kind": "enum",
+      "values": [
+        0,
+        1
       ]
     },
     "generics": [],

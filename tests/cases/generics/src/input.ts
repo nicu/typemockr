@@ -2,11 +2,11 @@ export interface Box<T> {
   value: T;
 }
 
-export class SomeUseCase {
+export class Author {
   id!: string;
 }
 
-export class BaseTest<T> {
+export class ApiResponse<T> {
   payload!: T;
   items!: Array<T>;
 }
@@ -16,6 +16,6 @@ export interface Wrapper<T> {
   box: Box<T>;
 }
 
-export class Test extends BaseTest<SomeUseCase> {
-  box!: Box<SomeUseCase>;
+export class AuthorResponse extends ApiResponse<Author> {
+  box!: Box<Author>;
 }

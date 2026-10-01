@@ -2,6 +2,7 @@ import {
   Node,
   Project,
   SyntaxKind,
+  ts,
   Symbol as MorphSymbol,
   Type,
   type ClassDeclaration,
@@ -363,11 +364,13 @@ function normalizeObjectType(
 
   const stringIndexType = type.getStringIndexType();
   const numberIndexType = type.getNumberIndexType();
+  const keyed = getMappedKeySet(type);
 
   return {
     kind: "object",
     properties: [...properties.values()],
     ...(nominal ? { nominal } : {}),
+    ...(keyed && properties.size > 0 ? { keyed } : {}),
     indexSignature: stringIndexType
       ? {
           key: "string",
@@ -423,6 +426,44 @@ function normalizeEnumType(
     kind: "enum",
     values,
   };
+}
+
+/** The key set of a mapped type over literals (`Record<Enum, T>`), not over `keyof T` (`Partial`, `Pick`). */
+function getMappedKeySet(type: Type): { name?: string } | undefined {
+  if (!(type.getObjectFlags() & ts.ObjectFlags.Mapped)) {
+    return undefined;
+  }
+
+  const declaration = type.getSymbol()?.getDeclarations().find(Node.isMappedTypeNode);
+  const constraintNode = declaration?.getTypeParameter().getConstraint();
+  if (
+    !declaration ||
+    (constraintNode && Node.isTypeOperatorTypeNode(constraintNode)) ||
+    Node.isIndexedAccessTypeNode(declaration.getTypeNode() ?? declaration)
+  ) {
+    return undefined;
+  }
+
+  // Resolved by the checker once the members are; not part of the public compiler API.
+  const constraint = (type.compilerType as { constraintType?: ts.Type }).constraintType;
+  if (!constraint) {
+    return {};
+  }
+  const members = constraint.isUnion() ? constraint.types : [constraint];
+  const literal = ts.TypeFlags.StringLiteral | ts.TypeFlags.NumberLiteral | ts.TypeFlags.EnumLiteral;
+  if (!members.every((member) => member.flags & literal)) {
+    return undefined;
+  }
+
+  const enums = new Set(
+    members.map((member) => {
+      const parent = member.getSymbol()?.declarations?.[0]?.parent;
+      return parent && ts.isEnumDeclaration(parent) ? parent.name.text : undefined;
+    }),
+  );
+  const [only] = enums;
+  const name = enums.size === 1 && only ? only : constraint.aliasSymbol?.name;
+  return name ? { name } : {};
 }
 
 interface EnumMemberInfo {

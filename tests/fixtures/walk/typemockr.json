@@ -1,0 +1,11 @@
+{
+  "include": ["models/**/*.d.ts"],
+  "baseDir": ["models"],
+  "outDir": "$mock",
+  "mappings": [
+    { "source": "Store/Book/*", "path": "*.name", "type": "string", "value": "\"edition name\"" },
+    { "path": "*.name", "type": "string", "value": "faker.commerce.productName()" },
+    { "path": "*.$type", "type": "string", "value": "\"Acme.Api.Models.{sourceNamespace}\"" },
+    { "type": "date", "value": "faker.date.anytime().toISOString()", "cast": "unknown" }
+  ]
+}

@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
-import type { BaseTest, Box, SomeUseCase, Test, Wrapper } from "../src/input";
+import type { ApiResponse, Author, AuthorResponse, Box, Wrapper } from "../src/input";
 
-export function MockBaseTest<T = any>(mockT: () => T = () => ({} as T), overrides: Partial<BaseTest<T>> = {}): BaseTest<T> {
+export function MockApiResponse<T = any>(mockT: () => T = () => ({} as T), overrides: Partial<ApiResponse<T>> = {}): ApiResponse<T> {
   const result = {
     "payload": mockT(),
     "items": faker.helpers.multiple(() => mockT()),
@@ -9,25 +9,25 @@ export function MockBaseTest<T = any>(mockT: () => T = () => ({} as T), override
   return { ...result, ...overrides };
 }
 
-export function MockBox<T = any>(mockT: () => T = () => ({} as T), overrides: Partial<Box<T>> = {}): Box<T> {
-  const result = {
-    "value": mockT(),
-  };
-  return { ...result, ...overrides };
-}
-
-export function MockSomeUseCase(overrides: Partial<SomeUseCase> = {}): SomeUseCase {
+export function MockAuthor(overrides: Partial<Author> = {}): Author {
   const result = {
     "id": faker.lorem.words(),
   };
   return { ...result, ...overrides };
 }
 
-export function MockTest(overrides: Partial<Test> = {}): Test {
+export function MockAuthorResponse(overrides: Partial<AuthorResponse> = {}): AuthorResponse {
   const result = {
-    "box": MockBox(() => MockSomeUseCase()),
-    "payload": MockSomeUseCase(),
-    "items": faker.helpers.multiple(() => MockSomeUseCase()),
+    "box": MockBox(() => MockAuthor()),
+    "payload": MockAuthor(),
+    "items": faker.helpers.multiple(() => MockAuthor()),
+  };
+  return { ...result, ...overrides };
+}
+
+export function MockBox<T = any>(mockT: () => T = () => ({} as T), overrides: Partial<Box<T>> = {}): Box<T> {
+  const result = {
+    "value": mockT(),
   };
   return { ...result, ...overrides };
 }

@@ -35,8 +35,8 @@ describe(".d.ts input from an installed package", () => {
   test("generates one mock per declaration file, named without the .d suffix", () => {
     expect(apiFiles.map((entry) => entry.outputFile.slice(fixture.rootDir.length)).sort()).toEqual([
       "/$mock/api/Admin/GiftCard.mock.ts",
-      "/$mock/api/Store/GiftCard.mock.ts",
       "/$mock/api/Store/CardStatus.mock.ts",
+      "/$mock/api/Store/GiftCard.mock.ts",
       "/$mock/api/index.mock.ts",
     ]);
   });

@@ -1,6 +1,6 @@
 [
   {
-    "name": "BaseClass",
+    "name": "Entity",
     "declarationKind": "class",
     "type": {
       "kind": "object",
@@ -20,7 +20,7 @@
     "recursive": false
   },
   {
-    "name": "ChildClass",
+    "name": "Publisher",
     "declarationKind": "class",
     "type": {
       "kind": "object",
@@ -49,7 +49,7 @@
     "recursive": false
   },
   {
-    "name": "BaseInterface",
+    "name": "Coded",
     "declarationKind": "interface",
     "type": {
       "kind": "object",
@@ -69,7 +69,7 @@
     "recursive": false
   },
   {
-    "name": "ChildInterface",
+    "name": "Genre",
     "declarationKind": "interface",
     "type": {
       "kind": "object",

@@ -26,7 +26,7 @@
     "recursive": false
   },
   {
-    "name": "SomeUseCase",
+    "name": "Author",
     "declarationKind": "class",
     "type": {
       "kind": "object",
@@ -46,7 +46,7 @@
     "recursive": false
   },
   {
-    "name": "BaseTest",
+    "name": "ApiResponse",
     "declarationKind": "class",
     "type": {
       "kind": "object",
@@ -131,7 +131,7 @@
     "recursive": false
   },
   {
-    "name": "Test",
+    "name": "AuthorResponse",
     "declarationKind": "class",
     "type": {
       "kind": "object",
@@ -146,7 +146,7 @@
             "typeArguments": [
               {
                 "kind": "reference",
-                "name": "SomeUseCase",
+                "name": "Author",
                 "sourceFile": "src/input.ts",
                 "genericParameter": false,
                 "typeArguments": []
@@ -160,7 +160,7 @@
           "name": "payload",
           "type": {
             "kind": "reference",
-            "name": "SomeUseCase",
+            "name": "Author",
             "sourceFile": "src/input.ts",
             "genericParameter": false,
             "typeArguments": []
@@ -174,7 +174,7 @@
             "kind": "array",
             "element": {
               "kind": "reference",
-              "name": "SomeUseCase",
+              "name": "Author",
               "sourceFile": "src/input.ts",
               "genericParameter": false,
               "typeArguments": []

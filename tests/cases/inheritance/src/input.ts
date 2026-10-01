@@ -1,15 +1,15 @@
-export class BaseClass {
+export class Entity {
   id!: string;
 }
 
-export class ChildClass extends BaseClass {
+export class Publisher extends Entity {
   name!: string;
 }
 
-export interface BaseInterface {
+export interface Coded {
   code: string;
 }
 
-export interface ChildInterface extends BaseInterface {
+export interface Genre extends Coded {
   label: string;
 }

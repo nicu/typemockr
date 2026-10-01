@@ -12,24 +12,24 @@ export function MockAccount(overrides = {}) {
 }
 
 /**
- * @param {Partial<import("../src/input").Admin>} [overrides={}]
- * @returns {import("../src/input").Admin}
+ * @param {Partial<import("../src/input").Genre>} [overrides={}]
+ * @returns {import("../src/input").Genre}
  */
-export function MockAdmin(overrides = {}) {
+export function MockGenre(overrides = {}) {
   const result = {
-    "level": faker.number.int(),
-    "id": faker.lorem.words(),
+    "name": faker.lorem.words(),
   };
   return { ...result, ...overrides };
 }
 
 /**
- * @param {Partial<import("../src/input").Plain>} [overrides={}]
- * @returns {import("../src/input").Plain}
+ * @param {Partial<import("../src/input").StaffAccount>} [overrides={}]
+ * @returns {import("../src/input").StaffAccount}
  */
-export function MockPlain(overrides = {}) {
+export function MockStaffAccount(overrides = {}) {
   const result = {
-    "name": faker.lorem.words(),
+    "level": faker.number.int(),
+    "id": faker.lorem.words(),
   };
   return { ...result, ...overrides };
 }

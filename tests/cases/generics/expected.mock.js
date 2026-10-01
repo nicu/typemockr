@@ -3,13 +3,37 @@ import { faker } from "@faker-js/faker";
 /**
  * @template T
  * @param {() => T} [mockT=() => ({})]
- * @param {Partial<import("../src/input").BaseTest<T>>} [overrides={}]
- * @returns {import("../src/input").BaseTest<T>}
+ * @param {Partial<import("../src/input").ApiResponse<T>>} [overrides={}]
+ * @returns {import("../src/input").ApiResponse<T>}
  */
-export function MockBaseTest(mockT = () => ({}), overrides = {}) {
+export function MockApiResponse(mockT = () => ({}), overrides = {}) {
   const result = {
     "payload": mockT(),
     "items": faker.helpers.multiple(() => mockT()),
+  };
+  return { ...result, ...overrides };
+}
+
+/**
+ * @param {Partial<import("../src/input").Author>} [overrides={}]
+ * @returns {import("../src/input").Author}
+ */
+export function MockAuthor(overrides = {}) {
+  const result = {
+    "id": faker.lorem.words(),
+  };
+  return { ...result, ...overrides };
+}
+
+/**
+ * @param {Partial<import("../src/input").AuthorResponse>} [overrides={}]
+ * @returns {import("../src/input").AuthorResponse}
+ */
+export function MockAuthorResponse(overrides = {}) {
+  const result = {
+    "box": MockBox(() => MockAuthor()),
+    "payload": MockAuthor(),
+    "items": faker.helpers.multiple(() => MockAuthor()),
   };
   return { ...result, ...overrides };
 }
@@ -23,30 +47,6 @@ export function MockBaseTest(mockT = () => ({}), overrides = {}) {
 export function MockBox(mockT = () => ({}), overrides = {}) {
   const result = {
     "value": mockT(),
-  };
-  return { ...result, ...overrides };
-}
-
-/**
- * @param {Partial<import("../src/input").SomeUseCase>} [overrides={}]
- * @returns {import("../src/input").SomeUseCase}
- */
-export function MockSomeUseCase(overrides = {}) {
-  const result = {
-    "id": faker.lorem.words(),
-  };
-  return { ...result, ...overrides };
-}
-
-/**
- * @param {Partial<import("../src/input").Test>} [overrides={}]
- * @returns {import("../src/input").Test}
- */
-export function MockTest(overrides = {}) {
-  const result = {
-    "box": MockBox(() => MockSomeUseCase()),
-    "payload": MockSomeUseCase(),
-    "items": faker.helpers.multiple(() => MockSomeUseCase()),
   };
   return { ...result, ...overrides };
 }

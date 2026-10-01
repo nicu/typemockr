@@ -1,12 +1,12 @@
-export type Slot = "primary" | "secondary";
+export type CoverSide = "front" | "back";
 
 export interface Wrapper<T> {
   value: T;
 }
 
-export interface Listing {
-  required: Record<Slot, string>;
-  optional?: Record<Slot, string>;
+export interface BookListing {
+  required: Record<CoverSide, string>;
+  optional?: Record<CoverSide, string>;
   items: Array<{ label: string }>;
   optionalItems?: Array<{ label: string }>;
   groups?: Array<{ entries: Array<{ code: string }> }>;

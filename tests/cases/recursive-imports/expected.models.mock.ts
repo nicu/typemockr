@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
-import type { Person, Product } from "../src/models";
+import type { Customer, Product } from "../src/models";
 
-export function MockPerson(overrides: Partial<Person> = {}): Person {
+export function MockCustomer(overrides: Partial<Customer> = {}): Customer {
   const result = {
     "name": faker.lorem.words(),
   };

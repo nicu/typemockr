@@ -1,6 +1,6 @@
 [
   {
-    "name": "Person",
+    "name": "Customer",
     "declarationKind": "interface",
     "type": {
       "kind": "object",
@@ -46,10 +46,10 @@
       "kind": "object",
       "properties": [
         {
-          "name": "person",
+          "name": "customer",
           "type": {
             "kind": "reference",
-            "name": "Person",
+            "name": "Customer",
             "sourceFile": "src/models.ts",
             "genericParameter": false,
             "typeArguments": []

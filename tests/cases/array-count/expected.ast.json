@@ -1,12 +1,12 @@
 [
   {
-    "name": "Leaf",
+    "name": "Book",
     "declarationKind": "interface",
     "type": {
       "kind": "object",
       "properties": [
         {
-          "name": "name",
+          "name": "title",
           "type": {
             "kind": "scalar",
             "scalar": "string"
@@ -20,18 +20,18 @@
     "recursive": false
   },
   {
-    "name": "Branch",
+    "name": "Shelf",
     "declarationKind": "interface",
     "type": {
       "kind": "object",
       "properties": [
         {
-          "name": "leaves",
+          "name": "books",
           "type": {
             "kind": "array",
             "element": {
               "kind": "reference",
-              "name": "Leaf",
+              "name": "Book",
               "sourceFile": "src/input.ts",
               "genericParameter": false,
               "typeArguments": []
@@ -58,7 +58,7 @@
             "kind": "array",
             "element": {
               "kind": "reference",
-              "name": "Branch",
+              "name": "Shelf",
               "sourceFile": "src/input.ts",
               "genericParameter": false,
               "typeArguments": []

@@ -1,9 +1,9 @@
-export interface Leaf {
-  name: string;
+export interface Book {
+  title: string;
 }
 
-export interface Branch {
-  leaves: Leaf[];
+export interface Shelf {
+  books: Book[];
   labels: string[];
-  children?: Branch[];
+  children?: Shelf[];
 }

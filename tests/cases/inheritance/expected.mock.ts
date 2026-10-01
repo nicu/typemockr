@@ -1,32 +1,32 @@
 import { faker } from "@faker-js/faker";
-import type { BaseClass, BaseInterface, ChildClass, ChildInterface } from "../src/input";
+import type { Coded, Entity, Genre, Publisher } from "../src/input";
 
-export function MockBaseClass(overrides: Partial<BaseClass> = {}): BaseClass {
-  const result = {
-    "id": faker.lorem.words(),
-  };
-  return { ...result, ...overrides };
-}
-
-export function MockBaseInterface(overrides: Partial<BaseInterface> = {}): BaseInterface {
+export function MockCoded(overrides: Partial<Coded> = {}): Coded {
   const result = {
     "code": faker.lorem.words(),
   };
   return { ...result, ...overrides };
 }
 
-export function MockChildClass(overrides: Partial<ChildClass> = {}): ChildClass {
+export function MockEntity(overrides: Partial<Entity> = {}): Entity {
   const result = {
-    "name": faker.lorem.words(),
     "id": faker.lorem.words(),
   };
   return { ...result, ...overrides };
 }
 
-export function MockChildInterface(overrides: Partial<ChildInterface> = {}): ChildInterface {
+export function MockGenre(overrides: Partial<Genre> = {}): Genre {
   const result = {
     "label": faker.lorem.words(),
     "code": faker.lorem.words(),
+  };
+  return { ...result, ...overrides };
+}
+
+export function MockPublisher(overrides: Partial<Publisher> = {}): Publisher {
+  const result = {
+    "name": faker.lorem.words(),
+    "id": faker.lorem.words(),
   };
   return { ...result, ...overrides };
 }

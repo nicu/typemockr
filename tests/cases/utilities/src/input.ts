@@ -1,12 +1,12 @@
-export interface User {
+export interface Customer {
   id: string;
   name: string;
   email?: string;
 }
 
-export type UserPick = Pick<User, "id" | "name">;
-export type UserOmit = Omit<User, "email">;
-export type UserPartial = Partial<User>;
-export type UserRequired = Required<User>;
-export type UserReadonly = Readonly<User>;
-export type UserRecord = Record<string, string>;
+export type CustomerPick = Pick<Customer, "id" | "name">;
+export type CustomerOmit = Omit<Customer, "email">;
+export type CustomerPartial = Partial<Customer>;
+export type CustomerRequired = Required<Customer>;
+export type CustomerReadonly = Readonly<Customer>;
+export type CustomerRecord = Record<string, string>;

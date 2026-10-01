@@ -16,6 +16,7 @@ import type {
   TypeNode,
   TypemockrArrayCount,
   TypemockrOutputFormat,
+  ValueExpressionContext,
 } from "./types";
 
 interface EmitContext {
@@ -869,7 +870,7 @@ function visitTypeNode(node: TypeNode, visit: (node: TypeNode) => void) {
   }
 }
 
-interface ResolvedRegistryValue {
+export interface ResolvedRegistryValue {
   value: string;
   cast?: "unknown";
 }
@@ -880,27 +881,9 @@ function resolveRegistryExpression(
   path: string,
   context: Pick<FileEmitContext, "registry" | "config" | "recorder">,
 ): ResolvedRegistryValue | undefined {
-  const { registry, recorder } = context;
-  const valueContext = {
-    kind: node.kind,
-    path,
-    entityName: entity.name,
-    sourceFile: entity.sourceFile,
-    ...getSourceLocationTokens(context.config, entity.sourceFile),
-    scalar: node.kind === "scalar" ? node.scalar : undefined,
-    targetName:
-      node.kind === "reference" && !node.genericParameter ? node.name : undefined,
-    genericName:
-      node.kind === "reference" && node.genericParameter ? node.name : undefined,
-  };
-
-  const mapped = registry.values?.[path];
-  const provided: ProvidedValue | undefined | null =
-    typeof mapped === "string" && mapped.length > 0
-      ? mapped
-      : registry.provideValue?.(valueContext);
-
-  const resolved = normalizeProvidedValue(provided);
+  const { recorder } = context;
+  const valueContext = createValueContext(context.config, entity, node, path);
+  const resolved = lookupRegistryValue(context.registry, valueContext)?.resolved;
 
   if (resolved === undefined) {
     recorder?.scalarFellThrough(valueContext);
@@ -909,6 +892,47 @@ function resolveRegistryExpression(
 
   recorder?.scalarResolved(valueContext, resolved.value, resolved.cast === "unknown");
   return resolved;
+}
+
+/** The context a registry sees for the value at `path`. Shared with the walker. */
+export function createValueContext(
+  config: Pick<ResolvedTypemockrConfig, "baseDir" | "projectRootDir">,
+  entity: Pick<EntityNode, "name" | "sourceFile">,
+  node: TypeNode,
+  path: string,
+): ValueExpressionContext {
+  return {
+    kind: node.kind,
+    path,
+    entityName: entity.name,
+    sourceFile: entity.sourceFile,
+    ...getSourceLocationTokens(config, entity.sourceFile),
+    scalar: node.kind === "scalar" ? node.scalar : undefined,
+    targetName:
+      node.kind === "reference" && !node.genericParameter ? node.name : undefined,
+    genericName:
+      node.kind === "reference" && node.genericParameter ? node.name : undefined,
+  };
+}
+
+/**
+ * The expression generation would emit for a value: `registry.values` by exact path first, then
+ * `provideValue` (which is where `mappings` live). Shared with the walker.
+ */
+export function lookupRegistryValue(
+  registry: GenerationRegistry,
+  valueContext: ValueExpressionContext,
+): { resolved: ResolvedRegistryValue; via: "values" | "provideValue" } | undefined {
+  const mapped = registry.values?.[valueContext.path];
+  const fromValues = typeof mapped === "string" && mapped.length > 0;
+  const provided: ProvidedValue | undefined | null = fromValues
+    ? mapped
+    : registry.provideValue?.(valueContext);
+  const resolved = normalizeProvidedValue(provided);
+
+  return resolved === undefined
+    ? undefined
+    : { resolved, via: fromValues ? "values" : "provideValue" };
 }
 
 function normalizeProvidedValue(
@@ -932,7 +956,7 @@ const sourceLocationCache = new Map<string, {
 }>();
 
 /** The `{typeName}`/`{sourcePath}`/… inputs a mapping value can be built from. */
-function getSourceLocationTokens(
+export function getSourceLocationTokens(
   config: Pick<ResolvedTypemockrConfig, "baseDir" | "projectRootDir">,
   sourceFile: string,
 ) {

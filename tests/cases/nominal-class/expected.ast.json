@@ -21,7 +21,7 @@
     "recursive": false
   },
   {
-    "name": "Admin",
+    "name": "StaffAccount",
     "declarationKind": "class",
     "type": {
       "kind": "object",
@@ -51,7 +51,7 @@
     "recursive": false
   },
   {
-    "name": "Plain",
+    "name": "Genre",
     "declarationKind": "class",
     "type": {
       "kind": "object",

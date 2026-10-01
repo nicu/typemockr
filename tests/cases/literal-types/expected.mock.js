@@ -1,20 +1,20 @@
 import { faker } from "@faker-js/faker";
 
 /**
- * @param {import("../src/input").ImportOperation} [overrides]
- * @returns {import("../src/input").ImportOperation}
- */
-export function MockImportOperation(overrides) {
-  const result = 0;
-  return overrides ?? result;
-}
-
-/**
  * @param {import("../src/input").Channel} [overrides]
  * @returns {import("../src/input").Channel}
  */
 export function MockChannel(overrides) {
   const result = faker.helpers.arrayElement([0, 1]);
+  return overrides ?? result;
+}
+
+/**
+ * @param {import("../src/input").ImportOperation} [overrides]
+ * @returns {import("../src/input").ImportOperation}
+ */
+export function MockImportOperation(overrides) {
+  const result = 0;
   return overrides ?? result;
 }
 

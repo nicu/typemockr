@@ -226,7 +226,7 @@ describe("drift report", () => {
     expect(inferExpressionScalar("faker.commerce.price()")).toBe("string");
 
     // Anything we cannot measure must stay silent rather than fail a build.
-    expect(inferExpressionScalar("MockMoney().amount")).toBeUndefined();
+    expect(inferExpressionScalar("MockPrice().amount")).toBeUndefined();
     expect(inferExpressionScalar("faker.helpers.multiple(() => 1)")).toBeUndefined();
     expect(inferExpressionScalar("faker.lorem.words(")).toBeUndefined();
   });

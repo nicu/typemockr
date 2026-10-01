@@ -1,17 +1,17 @@
 [
   {
-    "name": "Slot",
+    "name": "CoverSide",
     "declarationKind": "typeAlias",
     "type": {
       "kind": "union",
       "members": [
         {
           "kind": "literal",
-          "value": "primary"
+          "value": "front"
         },
         {
           "kind": "literal",
-          "value": "secondary"
+          "value": "back"
         }
       ]
     },
@@ -45,7 +45,7 @@
     "recursive": false
   },
   {
-    "name": "Listing",
+    "name": "BookListing",
     "declarationKind": "interface",
     "type": {
       "kind": "object",
@@ -56,7 +56,7 @@
             "kind": "object",
             "properties": [
               {
-                "name": "primary",
+                "name": "front",
                 "type": {
                   "kind": "scalar",
                   "scalar": "string"
@@ -65,7 +65,7 @@
                 "readonly": false
               },
               {
-                "name": "secondary",
+                "name": "back",
                 "type": {
                   "kind": "scalar",
                   "scalar": "string"
@@ -73,7 +73,10 @@
                 "optional": false,
                 "readonly": false
               }
-            ]
+            ],
+            "keyed": {
+              "name": "CoverSide"
+            }
           },
           "optional": false,
           "readonly": false
@@ -84,7 +87,7 @@
             "kind": "object",
             "properties": [
               {
-                "name": "primary",
+                "name": "front",
                 "type": {
                   "kind": "scalar",
                   "scalar": "string"
@@ -93,7 +96,7 @@
                 "readonly": false
               },
               {
-                "name": "secondary",
+                "name": "back",
                 "type": {
                   "kind": "scalar",
                   "scalar": "string"
@@ -101,7 +104,10 @@
                 "optional": false,
                 "readonly": false
               }
-            ]
+            ],
+            "keyed": {
+              "name": "CoverSide"
+            }
           },
           "optional": true,
           "readonly": false
