@@ -11,7 +11,8 @@
     /* Strictness */
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "types": ["node"],
     "module": "ESNext",
     "noEmit": true
   },

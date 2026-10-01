@@ -6,6 +6,7 @@
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "rootDir": ".",
     "outDir": ".build"
   },
   "include": ["src/**/*.ts", "$mock/**/*.ts"]
